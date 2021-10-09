@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","Nekos lib error"]],"struct":[["Client","Client for nekos.moe"],["Image","Neko images"],["ImageList","A list of neko images"],["Url","A parsed URL record."]]});

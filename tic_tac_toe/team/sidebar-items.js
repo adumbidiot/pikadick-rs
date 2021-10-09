@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["InvalidStrError","Failed to parse a [`Team`] from a [`str`]."],["Team","A Tic Tac Toe Team"]],"struct":[["InvalidCharError","Failed to parse a [`Team`] from a [`char`]."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","The error type"]],"mod":[["client","Client type"],["image","Image type Copied from `iqdb` Try to keep this file in sync."],["types","Api types"]]});

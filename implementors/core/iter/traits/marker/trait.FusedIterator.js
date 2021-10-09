@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["tic_tac_toe"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.55.0/core/iter/traits/marker/trait.FusedIterator.html\" title=\"trait core::iter::traits::marker::FusedIterator\">FusedIterator</a> for <a class=\"struct\" href=\"tic_tac_toe/board/struct.ChildrenIter.html\" title=\"struct tic_tac_toe::board::ChildrenIter\">ChildrenIter</a>","synthetic":false,"types":["tic_tac_toe::board::ChildrenIter"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["pikadick"] = [{"text":"impl ToSql for <a class=\"enum\" href=\"pikadick/database/model/enum.TicTacToePlayer.html\" title=\"enum pikadick::database::model::TicTacToePlayer\">TicTacToePlayer</a>","synthetic":false,"types":["pikadick::database::model::TicTacToePlayer"]},{"text":"impl ToSql for <a class=\"struct\" href=\"pikadick/database/model/struct.MaybeGuildString.html\" title=\"struct pikadick::database::model::MaybeGuildString\">MaybeGuildString</a>","synthetic":false,"types":["pikadick::database::model::MaybeGuildString"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

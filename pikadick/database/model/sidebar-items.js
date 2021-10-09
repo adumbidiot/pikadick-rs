@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["TicTacToePlayer","A player of Tic-Tac-Toe"]],"struct":[["MaybeGuildString","A String wrapper for a [`GuildId`]"],["TicTacToeGame","A Tic-Tac-Toe game"],["TicTacToePlayerParseError",""]]});

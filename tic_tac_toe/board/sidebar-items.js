@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["WinType","The win type"]],"struct":[["Board","A Tic Tac Toe board"],["ChildrenIter",""],["WinnerInfo","Winner Info"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","Library Error"]],"mod":[["types","Api Types"]],"struct":[["Client","A quizizz Client"]]});

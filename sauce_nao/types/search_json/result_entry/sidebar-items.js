@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Creator","The creator field of [`Data`]"]],"struct":[["Data","Result data"],["Header","A result entry header"],["ResultEntry","A result entry"]]});

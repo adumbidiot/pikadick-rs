@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["deviantart","fml","insta","iqdb","nekos","open_graph","pikadick","quizizz","r6stats","r6tracker","reddit_tube","rule34","sauce_nao","tic_tac_toe","tiktok","urban_dictionary","xkcd"];

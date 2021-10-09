@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["result_entry","[`ResultEntry`] types"]],"struct":[["Header","Search json result header"],["IndexEntry","An entry in the header index"],["SearchJson","A JSON search result"]]});
