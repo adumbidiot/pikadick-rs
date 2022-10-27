@@ -56,7 +56,7 @@ impl Client {
     }
 
     /// Send a GET web request to a `url` and get the result as a [`String`].
-    pub async fn get_text(&self, url: &str) -> Result<String, Error> {
+    async fn get_text(&self, url: &str) -> Result<String, Error> {
         Ok(self
             .client
             .get(url)
@@ -69,7 +69,7 @@ impl Client {
 
     /// Send a GET web request to a `uri` and get the result as [`Html`],
     /// then use the given func to process it.
-    pub async fn get_html<F, T>(&self, uri: &str, f: F) -> Result<T, Error>
+    async fn get_html<F, T>(&self, uri: &str, f: F) -> Result<T, Error>
     where
         F: FnOnce(Html) -> T + Send + 'static,
         T: Send + 'static,
@@ -81,7 +81,7 @@ impl Client {
     }
 
     /// Send a GET web request to a `uri` and get the result as xml, deserializing it to the given type.
-    pub async fn get_xml<T>(&self, uri: &str) -> Result<T, Error>
+    async fn get_xml<T>(&self, uri: &str) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned + Send + 'static,
     {
