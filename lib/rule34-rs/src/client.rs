@@ -14,10 +14,6 @@ use reqwest::header::{
     HeaderValue,
 };
 use scraper::Html;
-use tokio::io::{
-    AsyncWrite,
-    AsyncWriteExt,
-};
 use url::Url;
 
 /// A Rule34 Client
@@ -140,20 +136,6 @@ impl Client {
     /// Get a builder to list tags.
     pub fn list_tags(&self) -> TagListQueryBuilder {
         TagListQueryBuilder::new(self)
-    }
-
-    /// Send a GET web request to a `uri` and copy the result to the given async writer.
-    pub async fn get_to_writer<W>(&self, url: &str, mut writer: W) -> Result<(), Error>
-    where
-        W: AsyncWrite + Unpin,
-    {
-        let mut res = self.client.get(url).send().await?.error_for_status()?;
-
-        while let Some(chunk) = res.chunk().await? {
-            writer.write_all(&chunk).await?;
-        }
-
-        Ok(())
     }
 }
 
