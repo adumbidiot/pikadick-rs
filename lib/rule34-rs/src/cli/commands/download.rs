@@ -9,13 +9,7 @@ use std::{
         PathBuf,
     },
 };
-use tokio::{
-    fs::File,
-    io::{
-        AsyncWriteExt,
-        BufWriter,
-    },
-};
+use tokio::fs::File;
 
 #[derive(argh::FromArgs)]
 #[argh(subcommand, name = "download", description = "download a rule34 post")]
@@ -92,13 +86,10 @@ pub async fn exec(client: &rule34::Client, options: Options) -> anyhow::Result<(
             println!("Not saving since this is a dry run...")
         } else {
             println!("Downloading...");
-            let mut file = BufWriter::new(File::create(out_path).await?);
-            client
-                .get_to_writer(post.image_url.as_str(), &mut file)
+            let mut file = File::create(out_path).await?;
+            pikadick_util::download_to_file(&client.client, post.image_url.as_str(), &mut file)
                 .await
-                .context("failed to download image")?;
-
-            file.flush().await.context("failed to flush writer")?;
+                .context("failed to download to file")?;
         }
 
         if options.download_parent {
