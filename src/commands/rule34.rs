@@ -52,7 +52,7 @@ impl Rule34Client {
             .client
             .list_posts()
             .tags(Some(tags))
-            .limit(Some(1_000))
+            .limit(Some(rule34::POST_LIST_LIMIT_MAX))
             .execute()
             .await
             .context("failed to search rule34")?;
