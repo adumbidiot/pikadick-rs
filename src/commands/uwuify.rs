@@ -3,9 +3,9 @@ use rand::prelude::IndexedRandom;
 use serenity::{
     client::Context,
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::channel::Message,
 };

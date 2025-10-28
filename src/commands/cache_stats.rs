@@ -1,6 +1,6 @@
 use crate::{
-    checks::ENABLED_CHECK,
     ClientDataKey,
+    checks::ENABLED_CHECK,
 };
 use serenity::{
     builder::{
@@ -8,9 +8,9 @@ use serenity::{
         CreateMessage,
     },
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::{
         colour::Colour,

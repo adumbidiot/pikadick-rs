@@ -1,4 +1,5 @@
 use crate::{
+    ClientDataKey,
     checks::ENABLED_CHECK,
     client_data::{
         CacheStatsBuilder,
@@ -9,7 +10,6 @@ use crate::{
         TimedCache,
         TimedCacheEntry,
     },
-    ClientDataKey,
 };
 use anyhow::Context as _;
 use serenity::{
@@ -18,9 +18,9 @@ use serenity::{
         CreateMessage,
     },
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::{
         prelude::*,

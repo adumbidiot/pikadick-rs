@@ -1,7 +1,7 @@
 use crate::ClientDataKey;
 use anyhow::{
-    ensure,
     Context as _,
+    ensure,
 };
 use serenity::builder::{
     CreateEmbed,

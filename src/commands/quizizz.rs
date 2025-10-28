@@ -1,14 +1,14 @@
 use crate::{
+    ClientDataKey,
     checks::ENABLED_CHECK,
     util::LoadingReaction,
-    ClientDataKey,
 };
 use anyhow::Context as _;
 use serenity::{
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::prelude::*,
     prelude::*,
@@ -22,11 +22,11 @@ use std::{
     },
 };
 use tokio::sync::{
+    Notify,
     watch::{
         Receiver as WatchReceiver,
         Sender as WatchSender,
     },
-    Notify,
 };
 use tracing::{
     error,
@@ -91,8 +91,7 @@ impl QuizizzClient {
             .context("failed to get response from finder task")?;
 
         // Return new value
-        let ret = finder_task_rx.borrow_and_update().clone();
-        ret
+        finder_task_rx.borrow_and_update().clone()
     }
 }
 

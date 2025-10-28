@@ -1,15 +1,15 @@
 use crate::{
+    ClientDataKey,
     checks::ENABLED_CHECK,
     util::LoadingReaction,
-    ClientDataKey,
 };
 use anyhow::Context as _;
 use serenity::{
     client::Context,
     framework::standard::{
-        macros::*,
         Args,
         CommandResult,
+        macros::*,
     },
     model::prelude::*,
 };

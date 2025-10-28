@@ -7,12 +7,12 @@ use parking_lot::Mutex;
 use serenity::{
     client::Context,
     framework::standard::{
-        macros::check,
         Args,
         Check,
         CommandGroup,
         CommandOptions,
         Reason,
+        macros::check,
     },
     model::prelude::*,
 };

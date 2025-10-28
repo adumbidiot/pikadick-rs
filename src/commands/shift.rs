@@ -1,19 +1,19 @@
 use crate::{
+    ClientDataKey,
     checks::ENABLED_CHECK,
     client_data::{
         CacheStatsBuilder,
         CacheStatsProvider,
     },
     util::TimedCache,
-    ClientDataKey,
 };
 use rand::prelude::IndexedRandom;
 use serenity::{
     framework::standard::{
-        macros::command,
         ArgError,
         Args,
         CommandResult,
+        macros::command,
     },
     model::prelude::*,
     prelude::*,

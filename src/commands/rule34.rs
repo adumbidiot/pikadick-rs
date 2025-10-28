@@ -1,4 +1,5 @@
 use crate::{
+    ClientDataKey,
     client_data::{
         CacheStatsBuilder,
         CacheStatsProvider,
@@ -7,7 +8,6 @@ use crate::{
         TimedCache,
         TimedCacheEntry,
     },
-    ClientDataKey,
 };
 use anyhow::Context as _;
 use rand::prelude::IndexedRandom;

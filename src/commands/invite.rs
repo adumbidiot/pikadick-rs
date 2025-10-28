@@ -3,9 +3,9 @@ use serenity::{
     builder::CreateBotAuthParameters,
     client::Context,
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::{
         application::Scope,

@@ -57,7 +57,7 @@ impl Database {
         P: Into<Utf8PathBuf>,
     {
         let path = path.into();
-        tokio::task::spawn_blocking(move || Self::blocking_new(&path, create_if_missing))
+        tokio::task::spawn_blocking(move || unsafe { Self::blocking_new(&path, create_if_missing) })
             .await
             .context("failed to join tokio task")?
     }

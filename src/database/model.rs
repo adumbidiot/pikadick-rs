@@ -1,5 +1,6 @@
 use bitflags::bitflags;
 use rusqlite::{
+    ToSql,
     types::{
         FromSql,
         FromSqlError,
@@ -7,7 +8,6 @@ use rusqlite::{
         ToSqlOutput,
         ValueRef,
     },
-    ToSql,
 };
 use serenity::{
     model::prelude::*,

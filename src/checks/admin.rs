@@ -6,10 +6,10 @@ use pikadick_slash_framework::{
 use serenity::{
     client::Context,
     framework::standard::{
-        macros::check,
         Args,
         CommandOptions,
         Reason,
+        macros::check,
     },
     model::{
         application::CommandInteraction,

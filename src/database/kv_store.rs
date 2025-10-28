@@ -1,9 +1,9 @@
 use crate::database::Database;
 use anyhow::Context;
 use rusqlite::{
-    params,
     OptionalExtension,
     TransactionBehavior,
+    params,
 };
 
 // K/V Store SQL

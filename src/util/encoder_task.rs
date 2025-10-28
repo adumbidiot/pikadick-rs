@@ -5,9 +5,9 @@ use std::{
 };
 use tokio::sync::oneshot;
 use tokio_stream::{
-    wrappers::ReceiverStream,
     Stream,
     StreamExt,
+    wrappers::ReceiverStream,
 };
 use tracing::info;
 
@@ -295,8 +295,9 @@ impl<'a> EncoderTaskEncodeBuilder<'a> {
     /// Try to send the message, exiting it it is at capacity
     pub async fn try_send(
         &self,
-    ) -> anyhow::Result<impl Stream<Item = Result<tokio_ffmpeg_cli::Event, tokio_ffmpeg_cli::Error>>>
-    {
+    ) -> anyhow::Result<
+        impl Stream<Item = Result<tokio_ffmpeg_cli::Event, tokio_ffmpeg_cli::Error>> + use<>,
+    > {
         let (tx, rx) = oneshot::channel();
         self.task
             .tx

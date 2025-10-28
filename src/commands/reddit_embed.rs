@@ -1,4 +1,5 @@
 use crate::{
+    ClientDataKey,
     checks::{
         ADMIN_CHECK,
         ENABLED_CHECK,
@@ -12,20 +13,19 @@ use crate::{
         TimedCache,
         TimedCacheEntry,
     },
-    ClientDataKey,
 };
 use anyhow::{
-    bail,
     Context as _,
+    bail,
 };
 use dashmap::DashMap;
 use rand::prelude::IndexedRandom;
 use reddit_tube::types::get_video_response::GetVideoResponseOk;
 use serenity::{
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::prelude::*,
     prelude::*,

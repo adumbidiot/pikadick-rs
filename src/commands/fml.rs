@@ -1,16 +1,16 @@
 use crate::{
+    ClientDataKey,
     checks::ENABLED_CHECK,
     client_data::{
         CacheStatsBuilder,
         CacheStatsProvider,
     },
     util::LoadingReaction,
-    ClientDataKey,
 };
 use crossbeam::queue::SegQueue;
 use fml::{
-    types::Article,
     FmlResult,
+    types::Article,
 };
 use serenity::{
     builder::{
@@ -19,9 +19,9 @@ use serenity::{
     },
     client::Context,
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::channel::Message,
 };
@@ -83,7 +83,8 @@ async fn fml(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
     let mut loading = LoadingReaction::new(ctx.http.clone(), msg);
 
     if client.should_repopulate() {
-        if let Err(error) = client.repopulate().await {
+        let result = client.repopulate().await;
+        if let Err(error) = result {
             error!("Failed to repopulate fml cache: {error}");
 
             msg.channel_id

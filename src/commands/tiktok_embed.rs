@@ -1,4 +1,7 @@
 use crate::{
+    ClientDataKey,
+    LoadingReaction,
+    TikTokEmbedFlags,
     client_data::{
         CacheStatsBuilder,
         CacheStatsProvider,
@@ -8,13 +11,10 @@ use crate::{
         TimedCache,
         TimedCacheEntry,
     },
-    ClientDataKey,
-    LoadingReaction,
-    TikTokEmbedFlags,
 };
 use anyhow::{
-    ensure,
     Context as _,
+    ensure,
 };
 use camino::{
     Utf8Path,
@@ -117,13 +117,17 @@ impl TikTokData {
 
         let mut best_encoder_index = None;
         for encoder in encoders {
-            if let Some(index) = ENCODER_PREFERENCE_LIST
+            let encoder_index = ENCODER_PREFERENCE_LIST
                 .iter()
-                .position(|name| **name == *encoder.name)
+                .position(|name| **name == *encoder.name);
+            let encoder_index = match encoder_index {
+                Some(encoder_index) => encoder_index,
+                None => continue,
+            };
+            if best_encoder_index
+                .is_none_or(|best_encoder_index| best_encoder_index > encoder_index)
             {
-                if best_encoder_index.is_none_or(|best_encoder_index| best_encoder_index > index) {
-                    best_encoder_index = Some(index);
-                }
+                best_encoder_index = Some(encoder_index);
             }
         }
 
@@ -550,9 +554,5 @@ pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Comman
 
 /// Convert a bool to a str
 fn bool_to_str(value: bool) -> &'static str {
-    if value {
-        "True"
-    } else {
-        "False"
-    }
+    if value { "True" } else { "False" }
 }

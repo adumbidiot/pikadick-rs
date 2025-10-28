@@ -1,12 +1,12 @@
 use crate::database::{
-    model::TikTokEmbedFlags,
     Database,
+    model::TikTokEmbedFlags,
 };
 use anyhow::Context;
 use rusqlite::{
-    named_params,
     OptionalExtension,
     TransactionBehavior,
+    named_params,
 };
 use serenity::model::prelude::*;
 

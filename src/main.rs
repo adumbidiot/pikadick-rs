@@ -52,29 +52,30 @@ use crate::{
         Config,
     },
     database::{
-        model::TikTokEmbedFlags,
         Database,
+        model::TikTokEmbedFlags,
     },
     util::LoadingReaction,
 };
 use anyhow::{
+    Context as _,
     bail,
     ensure,
-    Context as _,
 };
 use pikadick_util::AsyncLockFile;
 use poise::structs::FrameworkError;
 use serenity::{
+    FutureExt,
     framework::standard::{
+        Args,
+        CommandGroup,
+        CommandResult,
+        HelpOptions,
         help_commands,
         macros::{
             group,
             help,
         },
-        Args,
-        CommandGroup,
-        CommandResult,
-        HelpOptions,
     },
     gateway::{
         ActivityData,
@@ -82,7 +83,6 @@ use serenity::{
     },
     model::prelude::*,
     prelude::*,
-    FutureExt,
 };
 use songbird::SerenityInit;
 use std::{
@@ -238,18 +238,18 @@ impl EventHandler for Handler {
                     Some(url::Host::Domain("www.reddit.com" | "reddit.com")) => {
                         // Don't process if it isn't enabled
                         if reddit_embed_is_enabled_for_guild {
-                            if let Err(error) = reddit_embed_data
+                            let result = reddit_embed_data
                                 .try_embed_url(&ctx, &msg, url, &mut loading_reaction)
                                 .await
-                                .context("failed to generate reddit embed")
-                            {
+                                .context("failed to generate reddit embed");
+                            if let Err(error) = result {
                                 error!("{error:?}");
                             }
                         }
                     }
                     Some(url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")) => {
                         if tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED) {
-                            if let Err(error) = tiktok_data
+                            let result = tiktok_data
                                 .try_embed_url(
                                     &ctx,
                                     &msg,
@@ -258,8 +258,8 @@ impl EventHandler for Handler {
                                     tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
                                 )
                                 .await
-                                .context("failed to generate tiktok embed")
-                            {
+                                .context("failed to generate tiktok embed");
+                            if let Err(error) = result {
                                 error!("{error:?}");
                             }
                         }
@@ -499,8 +499,6 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     let framework = framework
         .help(&HELP)
         .group(&GENERAL_GROUP)
-        .bucket("r6tracker", BucketBuilder::new_channel().delay(7))
-        .await
         .bucket("system", BucketBuilder::new_channel().delay(30))
         .await
         .bucket("quizizz", BucketBuilder::new_channel().delay(10))
@@ -523,6 +521,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::help(),
                 self::commands::nekos(),
                 self::commands::ping(),
+                // self::commands::r6tracker(),
             ],
             on_error: |error| {
                 (async move {

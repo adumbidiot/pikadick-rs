@@ -1,4 +1,6 @@
 use crate::{
+    ClientDataKey,
+    Database,
     checks::ENABLED_CHECK,
     client_data::{
         CacheStatsBuilder,
@@ -9,17 +11,15 @@ use crate::{
         TimedCache,
         TimedCacheEntry,
     },
-    ClientDataKey,
-    Database,
 };
 use anyhow::Context as _;
 use deviantart::Deviation;
 use rand::seq::IteratorRandom;
 use serenity::{
     framework::standard::{
-        macros::command,
         Args,
         CommandResult,
+        macros::command,
     },
     model::prelude::*,
     prelude::*,
