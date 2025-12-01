@@ -2,19 +2,22 @@ use crate::{
     ClientDataKey,
     PoiseContext,
     PoiseError,
-    util::{
-        TimedCache,
-        TimedCacheEntry,
-    },
 };
 use anyhow::Context as _;
+use bewu_util::AsyncTimedLruCache;
+use nd_util::ArcAnyhowError;
 use poise::CreateReply;
 use serenity::builder::CreateEmbed;
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 use tracing::{
     error,
     info,
 };
+
+const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
 
 fn populate_season(
     mut embed_builder: CreateEmbed,
@@ -163,52 +166,54 @@ impl Stats {
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct R6TrackerClient {
+#[derive(Debug)]
+struct InnerR6TrackerClient {
     client: r6tracker::Client,
-    /// The value is `None` if the user could not be found
-    search_cache: TimedCache<String, Option<Stats>>,
+
+    /// The value is `None` if the user could not be found.
+    cache: AsyncTimedLruCache<String, Result<Option<Arc<Stats>>, ArcAnyhowError>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct R6TrackerClient {
+    inner: Arc<InnerR6TrackerClient>,
 }
 
 impl R6TrackerClient {
-    /// Make a new r6 client with caching
+    /// Make a new r6 client with caching.
     pub fn new() -> Self {
         R6TrackerClient {
-            client: Default::default(),
-            search_cache: Default::default(),
+            inner: Arc::new(InnerR6TrackerClient {
+                client: Default::default(),
+                cache: AsyncTimedLruCache::new(100, FIVE_MINUTES),
+            }),
         }
     }
 
-    /// Get R6Tracker stats
-    pub async fn get_stats(
-        &self,
-        query: &str,
-    ) -> anyhow::Result<Arc<TimedCacheEntry<Option<Stats>>>> {
-        if let Some(entry) = self.search_cache.get_if_fresh(query) {
-            return Ok(entry);
-        }
-
-        let profile_response = self
-            .client
-            .get_profile(query, r6tracker::Platform::Pc)
+    /// Get R6Tracker stats for a user.
+    pub async fn get_stats(&self, query: &str) -> Result<Option<Arc<Stats>>, ArcAnyhowError> {
+        self.inner
+            .cache
+            .get(query.to_string(), || async {
+                self.inner
+                    .client
+                    .get_profile(query, r6tracker::Platform::Pc)
+                    .await
+                    .and_then(|profile_response| match profile_response.into_result() {
+                        Ok(profile) => Ok(Some(Arc::new(Stats { profile }))),
+                        Err(error) if error.is_missing() => Ok(None),
+                        Err(error) => Err(r6tracker::Error::from(error)),
+                    })
+                    .context("failed to get profile data")
+                    .map_err(ArcAnyhowError::new)
+            })
             .await
-            .context("failed to get profile data")?;
+    }
+}
 
-        let profile = match profile_response.into_result() {
-            Ok(profile) => Some(profile),
-            Err(error) if error.is_missing() => None,
-            Err(error) => {
-                return Err(r6tracker::Error::from(error).into());
-            }
-        };
-
-        let entry = profile.map(|profile| Stats { profile });
-
-        self.search_cache.insert(String::from(query), entry);
-
-        self.search_cache
-            .get_if_fresh(query)
-            .context("cache data expired")
+impl Default for R6TrackerClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -236,7 +241,7 @@ pub async fn r6tracker(
         .await
         .with_context(|| format!("failed to get r6tracker stats for \"{name}\""));
     let mut create_reply = CreateReply::default();
-    match result.as_ref().map(|entry| entry.data()) {
+    match result.as_ref() {
         Ok(Some(stats)) => {
             let embed_builder = stats.populate_embed(CreateEmbed::new());
             create_reply = create_reply.embed(embed_builder);
@@ -251,8 +256,6 @@ pub async fn r6tracker(
     }
 
     ctx.send(create_reply.reply(true)).await?;
-
-    client.search_cache.trim();
 
     Ok(())
 }

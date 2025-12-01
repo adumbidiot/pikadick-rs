@@ -22,8 +22,8 @@ const ONE_MINUTE: Duration = Duration::from_secs(60);
 struct NekosClientInner {
     client: nekos::Client,
 
-    cache: Arc<AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>>,
-    nsfw_cache: Arc<AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>>,
+    cache: AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>,
+    nsfw_cache: AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>,
 }
 
 /// The nekos client
@@ -39,8 +39,8 @@ impl NekosClient {
             inner: Arc::new(NekosClientInner {
                 client: Default::default(),
 
-                cache: Arc::new(AsyncTimedCacheCell::new(ONE_MINUTE)),
-                nsfw_cache: Arc::new(AsyncTimedCacheCell::new(ONE_MINUTE)),
+                cache: AsyncTimedCacheCell::new(ONE_MINUTE),
+                nsfw_cache: AsyncTimedCacheCell::new(ONE_MINUTE),
             }),
         }
     }

@@ -93,7 +93,7 @@ pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Comman
                             .get_stats(rest)
                             .await
                             .context("failed to get r6tracker stats");
-                        match stats.as_ref().map(|stats| stats.data()) {
+                        match stats.as_ref() {
                             Ok(Some(stats)) => {
                                 let embed_builder = stats.populate_embed(CreateEmbed::new());
                                 let response = EditInteractionResponse::new().embed(embed_builder);
