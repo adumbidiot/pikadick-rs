@@ -315,7 +315,6 @@ async fn help(
 #[commands(
     system,
     quizizz,
-    fml,
     zalgo,
     shift,
     reddit_embed,

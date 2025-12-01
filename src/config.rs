@@ -42,9 +42,6 @@ pub struct Config {
     /// The test guild
     pub test_guild: Option<GuildId>,
 
-    /// FML config
-    pub fml: FmlConfig,
-
     /// DeviantArt config
     pub deviantart: DeviantArtConfig,
 
@@ -63,13 +60,6 @@ pub struct Config {
     pub extra: HashMap<String, toml::Value>,
 }
 
-/// FML config
-#[derive(Deserialize, Debug)]
-pub struct FmlConfig {
-    /// FML API key
-    pub key: String,
-}
-
 /// Deviant Config
 #[derive(Deserialize, Debug)]
 pub struct DeviantArtConfig {
@@ -84,6 +74,7 @@ pub struct DeviantArtConfig {
 #[derive(Deserialize, Debug)]
 pub struct SauceNaoConfig {
     /// The api key
+    #[serde(rename = "api-key")]
     pub api_key: String,
 
     /// Unknown extra data

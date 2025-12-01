@@ -1,7 +1,6 @@
 pub mod cache_stats;
 pub mod cmd;
 pub mod deviantart;
-pub mod fml;
 pub mod help;
 pub mod insta_dl;
 pub mod invite;
@@ -32,7 +31,6 @@ pub use self::{
     cache_stats::CACHE_STATS_COMMAND,
     cmd::CMD_COMMAND,
     deviantart::DEVIANTART_COMMAND,
-    fml::FML_COMMAND,
     help::help,
     insta_dl::INSTA_DL_COMMAND,
     invite::INVITE_COMMAND,

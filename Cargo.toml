@@ -19,7 +19,6 @@ camino = { version = "1.2.1", features = [ "serde1" ] }
 crossbeam = "0.8.4"
 dashmap = "6.1.0"
 deviantart = { git = "https://github.com/adumbidiot/deviantart-rs", default-features = false, features = [ "rustls-tls" ] }
-fml = { path = "./lib/fml-rs", default-features = false, features = [ "rustls-tls" ] }
 futures = { version = "0.3.31", features = [ "std" ], default-features = false }
 heim = { version = "0.1.0-rc.1", features = [ "cpu", "virt" ] }
 indexmap = "2.12.1"

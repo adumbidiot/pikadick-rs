@@ -16,10 +16,7 @@ username = "[DEVIANT_USERNAME]"
 password = "[DEVIANT_PASSWORD]"
 
 [sauce_nao]
-api_key = "[SAUCE_NAO_API_KEY]"
-
-[open-ai]
-open-ai = "[OPEN_AI_API_KEY]"
+api-key = "[SAUCE_NAO_API_KEY]"
 
 [rule34]
 user-id = [RULE34_USER_ID]

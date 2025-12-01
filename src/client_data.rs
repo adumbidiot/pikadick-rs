@@ -2,7 +2,6 @@ use crate::{
     checks::EnabledCheckData,
     commands::{
         deviantart::DeviantartClient,
-        fml::FmlClient,
         iqdb::IqdbClient,
         nekos::NekosClient,
         quizizz::QuizizzClient,
@@ -79,8 +78,6 @@ pub struct ClientData {
     pub rule34_client: Rule34Client,
     /// The quizizz client
     pub quizizz_client: QuizizzClient,
-    /// The fml client
-    pub fml_client: FmlClient,
     /// The shift client
     pub shift_client: ShiftClient,
     /// The reddit embed data
@@ -143,7 +140,6 @@ impl ClientData {
             rule34_client,
 
             quizizz_client: Default::default(),
-            fml_client: FmlClient::new(config.fml.key.to_string()),
             shift_client: ShiftClient::new(),
             reddit_embed_data: Default::default(),
             enabled_check_data: Default::default(),
@@ -171,7 +167,6 @@ impl ClientData {
         let mut stat_builder = CacheStatsBuilder::new();
 
         let cache_stat_providers: &[&dyn CacheStatsProvider] = &[
-            &self.fml_client,
             &self.reddit_embed_data,
             &self.shift_client,
             &self.deviantart_client,
