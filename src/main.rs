@@ -521,7 +521,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::help(),
                 self::commands::nekos(),
                 self::commands::ping(),
-                // self::commands::r6tracker(),
+                self::commands::r6tracker(),
             ],
             on_error: |error| {
                 (async move {

@@ -6,6 +6,7 @@ pub use crate::{
     types::{
         InvalidApiResponseError,
         Platform,
+        SegmentSeason,
         UserData,
     },
 };

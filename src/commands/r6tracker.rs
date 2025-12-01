@@ -1,24 +1,60 @@
 use crate::{
     ClientDataKey,
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
+    PoiseContext,
+    PoiseError,
     util::{
         TimedCache,
         TimedCacheEntry,
     },
 };
 use anyhow::Context as _;
-use serenity::builder::{
-    CreateEmbed,
-    EditInteractionResponse,
-};
+use poise::CreateReply;
+use serenity::builder::CreateEmbed;
 use std::sync::Arc;
 use tracing::{
     error,
     info,
 };
+
+fn populate_season(
+    mut embed_builder: CreateEmbed,
+    season: Option<&r6tracker::SegmentSeason>,
+    game_mode_name: &str,
+) -> CreateEmbed {
+    if let Some(season) = season {
+        if let Some(name) = season.ranking_rank_name() {
+            embed_builder =
+                embed_builder.field(format!("Current {game_mode_name} Rank"), name, true);
+        }
+        if let Some(value) = season.ranking_value() {
+            embed_builder = embed_builder.field(
+                format!("Current {game_mode_name} MMR"),
+                value.to_string(),
+                true,
+            );
+        }
+
+        embed_builder = embed_builder
+            .field(
+                format!("Seasonal {game_mode_name} K/D"),
+                format!("{:.2}", season.kd_ratio_value()),
+                true,
+            )
+            .field(
+                format!("Seasonal {game_mode_name} Win %"),
+                format!("{:.2}", season.win_percentage_value()),
+                true,
+            )
+            .field(
+                format!("Seasonal # of {game_mode_name} Matches"),
+                season.matches_played_value().to_string(),
+                true,
+            )
+            .field("", "", false);
+    }
+
+    embed_builder
+}
 
 /// R6Tracker stats for a user
 #[derive(Debug)]
@@ -45,86 +81,22 @@ impl Stats {
                     .unwrap_or(false)
                     .to_string(),
                 true,
-            );
-
-        if let Some(season) = self.profile.get_current_ranked_season() {
-            if let Some(name) = season.ranking_rank_name() {
-                embed_builder = embed_builder.field("Current Rank", name, true);
-            }
-            if let Some(value) = season.ranking_value() {
-                embed_builder = embed_builder.field("Current MMR", value.to_string(), true);
-            }
-
-            embed_builder = embed_builder
-                .field(
-                    "Seasonal Ranked K/D",
-                    format!("{:.2}", season.kd_ratio_value()),
-                    true,
-                )
-                .field(
-                    "Seasonal Ranked Win %",
-                    format!("{:.2}", season.win_percentage_value()),
-                    true,
-                )
-                .field(
-                    "Seasonal # of Ranked Matches",
-                    season.matches_played_value().to_string(),
-                    true,
-                );
-        }
-
-        if let Some(season) = self.profile.get_current_ranked_season() {
-            if let Some(name) = season.ranking_rank_name() {
-                embed_builder = embed_builder.field("Current Casual Rank", name, true);
-            }
-            if let Some(value) = season.ranking_value() {
-                embed_builder = embed_builder.field("Current Casual MMR", value.to_string(), true);
-            }
-
-            embed_builder = embed_builder
-                .field(
-                    "Seasonal Casual K/D",
-                    format!("{:.2}", season.kd_ratio_value()),
-                    true,
-                )
-                .field(
-                    "Seasonal Casual Win %",
-                    format!("{:.2}", season.win_percentage_value()),
-                    true,
-                )
-                .field(
-                    "Seasonal # of Casual Matches",
-                    season.matches_played_value().to_string(),
-                    true,
-                );
-        }
+            )
+            .field("", "", false);
 
         let max_ranked_season = self.profile.get_max_ranked_season();
         if let Some(max_ranked_season) = max_ranked_season {
+            let max_rank = max_ranked_season.max_ranking_rank_name();
+            if let Some(max_rank) = max_rank {
+                embed_builder = embed_builder.field("Best Rank", max_rank, true);
+            }
+
             let max_mmr = max_ranked_season.max_ranking_value();
             if let Some(max_mmr) = max_mmr {
                 embed_builder = embed_builder.field("Best MMR", max_mmr.to_string(), true);
             }
 
-            let max_rank = max_ranked_season.max_ranking_rank_name();
-            if let Some(max_rank) = max_rank {
-                embed_builder = embed_builder.field("Best Rank", max_rank, true);
-            }
-        }
-
-        let ranked_game_mode = self.profile.get_ranked_game_mode();
-        if let Some(game_mode) = ranked_game_mode {
-            embed_builder = embed_builder
-                .field(
-                    "Lifetime Ranked K/D",
-                    format!("{:.2}", game_mode.kd_ratio_value()),
-                    true,
-                )
-                .field(
-                    "Lifetime Ranked Win %",
-                    format!("{:.2}", game_mode.win_percentage_value()),
-                    true,
-                );
+            embed_builder = embed_builder.field("", "", false);
         }
 
         let overview = self.profile.get_overview();
@@ -139,19 +111,52 @@ impl Stats {
                     "Lifetime Win %",
                     format!("{:.2}", overview.win_percentage_value()),
                     true,
-                );
+                )
+                .field("", "", false);
         }
 
-        if let Some(c) = self
+        let ranked_game_mode = self.profile.get_ranked_game_mode();
+        if let Some(game_mode) = ranked_game_mode {
+            embed_builder = embed_builder
+                .field(
+                    "Lifetime Ranked K/D",
+                    format!("{:.2}", game_mode.kd_ratio_value()),
+                    true,
+                )
+                .field(
+                    "Lifetime Ranked Win %",
+                    format!("{:.2}", game_mode.win_percentage_value()),
+                    true,
+                )
+                .field("", "", false);
+        }
+
+        embed_builder = populate_season(
+            embed_builder,
+            self.profile.get_current_ranked_season(),
+            "Ranked",
+        );
+        embed_builder = populate_season(
+            embed_builder,
+            self.profile.get_current_casual_season(),
+            "Casual",
+        );
+        embed_builder = populate_season(
+            embed_builder,
+            self.profile.get_current_unranked_season(),
+            "Unranked",
+        );
+
+        if let Some(color) = self
             .profile
             .get_current_ranked_season()
             .and_then(|season| season.color_u32())
         {
-            embed_builder = embed_builder.color(c);
+            embed_builder = embed_builder.color(color);
         }
 
-        if let Some(thumb) = self.profile.current_mmr_image() {
-            embed_builder = embed_builder.thumbnail(thumb.as_str());
+        if let Some(thumbnail) = self.profile.current_rank_points_image() {
+            embed_builder = embed_builder.thumbnail(thumbnail.as_str());
         }
 
         embed_builder
@@ -191,7 +196,7 @@ impl R6TrackerClient {
 
         let profile = match profile_response.into_result() {
             Ok(profile) => Some(profile),
-            Err(error) if error.is_not_found() => None,
+            Err(error) if error.is_missing() => None,
             Err(error) => {
                 return Err(r6tracker::Error::from(error).into());
             }
@@ -207,78 +212,47 @@ impl R6TrackerClient {
     }
 }
 
-impl CacheStatsProvider for R6TrackerClient {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat(
-            "r6tracker",
-            "search_cache",
-            self.search_cache.len() as f32,
-        );
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Get r6 stats for a user from r6tracker"),
+    check = "crate::checks::enabled"
+)]
+pub async fn r6tracker(
+    ctx: PoiseContext<'_>,
+    #[description = "The name of the user"] name: String,
+) -> Result<(), PoiseError> {
+    let data_lock = ctx.serenity_context().data.read().await;
+    let client_data = data_lock
+        .get::<ClientDataKey>()
+        .expect("failed to get client data");
+    let client = client_data.r6tracker_client.clone();
+    drop(data_lock);
+
+    info!("Getting r6 stats for \"{name}\" using R6Tracker");
+
+    ctx.defer().await?;
+    let result = client
+        .get_stats(&name)
+        .await
+        .with_context(|| format!("failed to get r6tracker stats for \"{name}\""));
+    let mut create_reply = CreateReply::default();
+    match result.as_ref().map(|entry| entry.data()) {
+        Ok(Some(stats)) => {
+            let embed_builder = stats.populate_embed(CreateEmbed::new());
+            create_reply = create_reply.embed(embed_builder);
+        }
+        Ok(None) => {
+            create_reply = create_reply.content("User does not exist or has not played R6 Siege.");
+        }
+        Err(error) => {
+            error!("{error:?}");
+            create_reply = create_reply.content(format!("{error:?}"));
+        }
     }
-}
 
-/// Options for r6tracker
-#[derive(Debug, pikadick_slash_framework::FromOptions)]
-struct R6TrackerOptions {
-    /// The user name
-    name: String,
-}
+    ctx.send(create_reply.reply(true)).await?;
 
-/// Create a slash command
-pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Command> {
-    pikadick_slash_framework::CommandBuilder::new()
-        .name("r6tracker")
-        .description("Get r6 stats for a user from r6tracker")
-        .argument(
-            pikadick_slash_framework::ArgumentParamBuilder::new()
-                .name("name")
-                .description("The name of the user")
-                .kind(pikadick_slash_framework::ArgumentKind::String)
-                .required(true)
-                .build()?,
-        )
-        .on_process(|ctx, interaction, args: R6TrackerOptions| async move {
-            let data_lock = ctx.data.read().await;
-            let client_data = data_lock
-                .get::<ClientDataKey>()
-                .expect("missing client data");
-            let client = client_data.r6tracker_client.clone();
-            drop(data_lock);
+    client.search_cache.trim();
 
-            let name = args.name;
-
-            info!("Getting r6 stats for \"{name}\" using R6Tracker");
-
-            interaction.defer(&ctx.http).await?;
-
-            let result = client
-                .get_stats(&name)
-                .await
-                .with_context(|| format!("failed to get r6tracker stats for \"{name}\""));
-
-            let mut edit_response_builder = EditInteractionResponse::new();
-            match result.as_ref().map(|entry| entry.data()) {
-                Ok(Some(stats)) => {
-                    let embed_builder = stats.populate_embed(CreateEmbed::new());
-                    edit_response_builder = edit_response_builder.embed(embed_builder);
-                }
-                Ok(None) => {
-                    edit_response_builder = edit_response_builder.content("No Results");
-                }
-                Err(error) => {
-                    error!("{error:?}");
-                    edit_response_builder = edit_response_builder.content(format!("{error:?}"));
-                }
-            }
-
-            interaction
-                .edit_response(&ctx.http, edit_response_builder)
-                .await?;
-
-            client.search_cache.trim();
-
-            Ok(())
-        })
-        .build()
-        .context("failed to build r6tracker command")
+    Ok(())
 }

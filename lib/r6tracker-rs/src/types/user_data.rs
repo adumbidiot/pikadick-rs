@@ -15,18 +15,12 @@ pub enum ApiResponse<T> {
 pub struct InvalidApiResponseError(pub Vec<ApiError>);
 
 impl InvalidApiResponseError {
-    /// Returns true if this is a not found error.
-    pub fn is_not_found(&self) -> bool {
-        if self.0.is_empty() {
-            return false;
+    /// Returns true if this is a missing error.
+    pub fn is_missing(&self) -> bool {
+        match self.0.as_slice() {
+            [first] => first.is_missing(),
+            _ => false,
         }
-
-        let first = match self.0.first() {
-            Some(first) => first,
-            None => return false,
-        };
-
-        first.is_not_found()
     }
 }
 
@@ -54,9 +48,12 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    /// Returns true if this is a not found error.
-    pub fn is_not_found(&self) -> bool {
-        self.code == "CollectorResultStatus::NotFound"
+    /// Returns true if this is a missing error.
+    pub fn is_missing(&self) -> bool {
+        // The user does not exist.
+        self.code == "CollectorResultStatus::NotFound" || 
+        // The user exists but has not played siege.
+        self.code == "CollectorResultStatus::NoData"
     }
 }
 
@@ -403,6 +400,16 @@ impl SegmentSeason {
         self.attributes.game_mode == "pvp_ranked"
     }
 
+    /// Returns `true` if this is Casual.
+    pub fn is_casual(&self) -> bool {
+        self.attributes.game_mode == "pvp_casual"
+    }
+
+    /// Returns `true` if this is Unranked.
+    pub fn is_unranked(&self) -> bool {
+        self.attributes.game_mode == "pvp_standard"
+    }
+
     /// Tries to parse this season's hex color as a u32
     pub fn color_u32(&self) -> Option<u32> {
         parse_hex_color(self.metadata.color.as_str())
@@ -579,6 +586,24 @@ impl UserData {
             .find(|season| season.attributes.season == self.metadata.current_season)
     }
 
+    /// Get the current unranked season.
+    pub fn get_current_unranked_season(&self) -> Option<&SegmentSeason> {
+        self.segments
+            .iter()
+            .filter_map(|segment| segment.season_ref())
+            .filter(|season| season.is_unranked())
+            .find(|season| season.attributes.season == self.metadata.current_season)
+    }
+
+    /// Get the current casual season.
+    pub fn get_current_casual_season(&self) -> Option<&SegmentSeason> {
+        self.segments
+            .iter()
+            .filter_map(|segment| segment.season_ref())
+            .filter(|season| season.is_casual())
+            .find(|season| season.attributes.season == self.metadata.current_season)
+    }
+
     /// Get the ranked season where the user attained their max ranking, either mmr or rp.
     pub fn get_max_ranked_season(&self) -> Option<&SegmentSeason> {
         self.segments
@@ -600,12 +625,12 @@ impl UserData {
     }
 
     /// Get the image url for the rank this user.
-    pub fn current_mmr_image(&self) -> Option<&Url> {
+    pub fn current_rank_points_image(&self) -> Option<&Url> {
         Some(
             &self
                 .get_current_ranked_season()?
                 .stats
-                .mmr
+                .rank_points
                 .as_ref()?
                 .metadata
                 .image_url,

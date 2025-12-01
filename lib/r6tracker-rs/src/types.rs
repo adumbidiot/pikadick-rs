@@ -7,6 +7,7 @@ pub use self::{
     user_data::{
         ApiResponse,
         InvalidApiResponseError,
+        SegmentSeason,
         UserData,
     },
 };

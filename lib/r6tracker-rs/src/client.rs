@@ -129,6 +129,6 @@ mod test {
             .take_invalid()
             .unwrap();
         dbg!(&profile_err);
-        assert!(profile_err.is_not_found());
+        assert!(profile_err.is_missing());
     }
 }
