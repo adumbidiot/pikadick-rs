@@ -1,5 +1,4 @@
 pub mod cache_stats;
-pub mod chat;
 pub mod cmd;
 pub mod deviantart;
 pub mod fml;

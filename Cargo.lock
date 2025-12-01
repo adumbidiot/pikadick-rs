@@ -3203,7 +3203,6 @@ dependencies = [
  "nd-util",
  "nekos",
  "once_cell",
- "open-ai",
  "openssl",
  "opentelemetry",
  "opentelemetry-otlp",

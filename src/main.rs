@@ -474,7 +474,6 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     /*
     // Setup slash framework
     let slash_framework = pikadick_slash_framework::FrameworkBuilder::new()
-        .command(rule34::create_slash_command()?)
         .command(tiktok_embed::create_slash_command()?)
         .command(chat::create_slash_command()?)
         .command(yodaspeak::create_slash_command()?)
