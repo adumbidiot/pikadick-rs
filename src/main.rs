@@ -474,7 +474,6 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     /*
     // Setup slash framework
     let slash_framework = pikadick_slash_framework::FrameworkBuilder::new()
-        .command(r6tracker::create_slash_command()?)
         .command(rule34::create_slash_command()?)
         .command(tiktok_embed::create_slash_command()?)
         .command(chat::create_slash_command()?)
@@ -522,6 +521,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::nekos(),
                 self::commands::ping(),
                 self::commands::r6tracker(),
+                self::commands::rule34(),
             ],
             on_error: |error| {
                 (async move {

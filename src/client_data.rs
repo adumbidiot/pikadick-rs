@@ -135,13 +135,15 @@ impl ClientData {
         let tiktok_data = TikTokData::new(&cache_dir, encoder_task.clone())
             .await
             .context("failed to init tiktok data")?;
+        let rule34_client = Rule34Client::new(config.rule34.user_id, &config.rule34.api_key);
 
         Ok(ClientData {
             shard_manager,
 
             nekos_client: Default::default(),
             r6tracker_client: Default::default(),
-            rule34_client: Default::default(),
+            rule34_client,
+
             quizizz_client: Default::default(),
             fml_client: FmlClient::new(config.fml.key.to_string()),
             shift_client: ShiftClient::new(),
@@ -174,7 +176,6 @@ impl ClientData {
         let cache_stat_providers: &[&dyn CacheStatsProvider] = &[
             &self.fml_client,
             &self.reddit_embed_data,
-            &self.rule34_client,
             &self.shift_client,
             &self.deviantart_client,
             &self.urban_client,

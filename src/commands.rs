@@ -46,6 +46,7 @@ pub use self::{
     r6tracker::r6tracker,
     reddit::REDDIT_COMMAND,
     reddit_embed::REDDIT_EMBED_COMMAND,
+    rule34::rule34,
     sauce_nao::SAUCE_NAO_COMMAND,
     shift::SHIFT_COMMAND,
     stop::STOP_COMMAND,

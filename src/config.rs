@@ -55,6 +55,9 @@ pub struct Config {
     #[serde(rename = "open-ai")]
     pub open_ai: OpenAiConfig,
 
+    /// Rule34 config
+    pub rule34: Rule34Config,
+
     /// The log config
     #[serde(default)]
     pub log: LogConfig,
@@ -102,6 +105,16 @@ pub struct OpenAiConfig {
     /// Unknown extra data
     #[serde(flatten)]
     pub extra: HashMap<String, toml::Value>,
+}
+
+/// Rule34 Config
+#[derive(Deserialize, Debug)]
+pub struct Rule34Config {
+    #[serde(rename = "user-id")]
+    pub user_id: u64,
+
+    #[serde(rename = "api-key")]
+    pub api_key: String,
 }
 
 /// Log Config
