@@ -53,5 +53,6 @@ pub use self::{
     uwuify::UWUIFY_COMMAND,
     vaporwave::VAPORWAVE_COMMAND,
     xkcd::XKCD_COMMAND,
+    yodaspeak::yodaspeak,
     zalgo::ZALGO_COMMAND,
 };

@@ -471,15 +471,6 @@ async fn process_dispatch_error_future<'fut>(
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     /*
-    // Setup slash framework
-    let slash_framework = pikadick_slash_framework::FrameworkBuilder::new()
-        .command(tiktok_embed::create_slash_command()?)
-        .command(chat::create_slash_command()?)
-        .command(yodaspeak::create_slash_command()?)
-        .build()?;
-        */
-
-    /*
     // Create second prefix that is uppercase so we are case-insensitive
     let config_prefix = config.prefix.clone();
     let uppercase_prefix = config_prefix.to_uppercase();
@@ -518,8 +509,10 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::help(),
                 self::commands::nekos(),
                 self::commands::ping(),
+                // self::commands::tiktok_embed(),
                 self::commands::r6tracker(),
                 self::commands::rule34(),
+                self::commands::yodaspeak(),
             ],
             on_error: |error| {
                 (async move {

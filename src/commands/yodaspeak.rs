@@ -1,52 +1,45 @@
-use crate::ClientDataKey;
-use anyhow::Context as _;
-use pikadick_slash_framework::FromOptions;
-use serenity::builder::{
-    CreateInteractionResponse,
-    CreateInteractionResponseMessage,
+use crate::{
+    ClientDataKey,
+    PoiseContext,
+    PoiseError,
 };
-use tracing::error;
+use anyhow::Context as _;
+use tracing::{
+    error,
+    info,
+};
 
-/// Options for yodaspeak
-#[derive(Debug, pikadick_slash_framework::FromOptions)]
-struct Options {
-    #[pikadick_slash_framework(description = "the message to translate")]
-    message: String,
-}
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Translate into what yoda would say"),
+    check = "crate::checks::enabled"
+)]
+pub async fn yodaspeak(
+    ctx: PoiseContext<'_>,
+    #[description = "The message to translate"] message: String,
+) -> Result<(), PoiseError> {
+    let data_lock = ctx.serenity_context().data.read().await;
+    let client_data = data_lock.get::<ClientDataKey>().unwrap();
+    let client = client_data.yodaspeak.clone();
+    drop(data_lock);
 
-/// Create a slash command
-pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Command> {
-    pikadick_slash_framework::CommandBuilder::new()
-        .name("yodaspeak")
-        .description("Translate into what yoda would say.")
-        .arguments(Options::get_argument_params()?.into_iter())
-        .on_process(|ctx, interaction, args: Options| async move {
-            let data_lock = ctx.data.read().await;
-            let client_data = data_lock.get::<ClientDataKey>().unwrap();
-            let client = client_data.yodaspeak.clone();
-            drop(data_lock);
+    info!("Translating {message:?} to yodaspeak");
+    ctx.defer().await?;
 
-            let result = client
-                .translate(args.message.as_str())
-                .await
-                .context("failed to translate");
+    let result = client
+        .translate(message.as_str())
+        .await
+        .context("failed to translate");
 
-            let mut message_builder = CreateInteractionResponseMessage::new();
-            match result {
-                Ok(translated) => {
-                    message_builder = message_builder.content(translated);
-                }
-                Err(error) => {
-                    error!("{error:?}");
-                    message_builder = message_builder.content(format!("{error:?}"));
-                }
-            }
+    let content = match result {
+        Ok(translated) => translated,
+        Err(error) => {
+            error!("{error:?}");
+            format!("{error:?}")
+        }
+    };
 
-            let response = CreateInteractionResponse::Message(message_builder);
-            interaction.create_response(&ctx.http, response).await?;
+    ctx.reply(content).await?;
 
-            Ok(())
-        })
-        .build()
-        .context("failed to build command")
+    Ok(())
 }
