@@ -2,11 +2,7 @@ use crate::{
     ClientDataKey,
     LoadingReaction,
     TikTokEmbedFlags,
-    util::{
-        EncoderTask,
-        TimedCache,
-        TimedCacheEntry,
-    },
+    util::EncoderTask,
 };
 use anyhow::{
     Context as _,
@@ -32,9 +28,13 @@ use serenity::{
     model::prelude::*,
     prelude::*,
 };
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 use tokio_stream::StreamExt;
 use tracing::{
+    debug,
     info,
     warn,
 };
@@ -54,17 +54,40 @@ const ENCODER_PREFERENCE_LIST: &[&str] = &[
     "libx264rgb",
 ];
 
-type VideoDownloadRequestMap = Arc<RequestMap<String, Result<Arc<Utf8Path>, ArcAnyhowError>>>;
+type VideoDownloadRequestMap = RequestMap<String, Result<Arc<Utf8Path>, ArcAnyhowError>>;
 
 /// Calculate the target bitrate.
 ///
-/// target_size is in kilobits.
-/// target_duration is in seconds.
-/// the bitrate is in kilobits
-fn calc_target_bitrate(target_size: u64, duration: u64) -> u64 {
+/// `target_size` is in kilobits.
+///
+/// # Returns
+/// Returns the bitrate in kilobits.
+fn calc_target_bitrate(target_size: u64, duration: Duration) -> u64 {
     // https://stackoverflow.com/questions/29082422/ffmpeg-video-compression-specific-file-size
 
-    target_size / duration
+    target_size / duration.as_secs()
+}
+
+#[derive(Debug)]
+struct UrlData {
+    id: u64,
+}
+
+/// Parse a tiktok url.
+fn parse_tiktok_url(url: &Url) -> anyhow::Result<UrlData> {
+    let host_str = url.host_str().context("missing host")?;
+    ensure!(host_str == "www.tiktok.com" || host_str == "tiktok.com");
+
+    let mut path_segments = url.path_segments().context("missing path")?;
+    let _user = path_segments.next().context("missing user")?;
+    ensure!(path_segments.next() == Some("video"));
+    let id = path_segments
+        .next()
+        .context("missing id")?
+        .parse()
+        .context("failed to parse id")?;
+
+    Ok(UrlData { id })
 }
 
 async fn select_best_encoder(encoder_task: &EncoderTask) -> anyhow::Result<&'static str> {
@@ -75,7 +98,7 @@ async fn select_best_encoder(encoder_task: &EncoderTask) -> anyhow::Result<&'sta
 
     // Keep only h264 encoders
     encoders.retain(|encoder| encoder.description.ends_with("(codec h264)"));
-    info!("found h264 encoders: {encoders:#?}");
+    debug!("found h264 encoders: {encoders:#?}");
 
     let mut best_encoder_index = None;
     for encoder in encoders {
@@ -99,14 +122,11 @@ async fn select_best_encoder(encoder_task: &EncoderTask) -> anyhow::Result<&'sta
 
 #[derive(Debug)]
 struct InnerTikTokData {
-    /// The inner client
-    client: tiktok::Client,
+    /// The client
+    tikwm_client: tikwm::Client,
 
     /// The encoder task
     encoder_task: EncoderTask,
-
-    /// A cache of post urls => post pages
-    post_page_cache: TimedCache<String, tiktok::Post>,
 
     /// The path to tiktok's cache dir
     video_download_cache_path: Utf8PathBuf,
@@ -143,66 +163,18 @@ impl TikTokData {
 
         Ok(Self {
             inner: Arc::new(InnerTikTokData {
-                client: tiktok::Client::new(),
-
+                tikwm_client: tikwm::Client::new(),
                 encoder_task,
 
-                post_page_cache: TimedCache::new(),
-
                 video_download_cache_path,
-                video_download_request_map: Arc::new(RequestMap::new()),
+                video_download_request_map: RequestMap::new(),
                 video_encoder: best_encoder,
             }),
         })
     }
 
-    /// Get a post page, using the cache if needed
-    pub async fn get_post_cached(
-        &self,
-        url: &str,
-    ) -> anyhow::Result<Arc<TimedCacheEntry<tiktok::Post>>> {
-        if let Some(post_page) = self.inner.post_page_cache.get_if_fresh(url) {
-            return Ok(post_page);
-        }
-
-        let video_id = Url::parse(url)?
-            .path_segments()
-            .context("missing path")?
-            .next_back()
-            .context("missing video id")?
-            .parse()
-            .context("invalid video id")?;
-
-        let mut feed = self
-            .inner
-            .client
-            .get_feed(Some(video_id))
-            .await
-            .context("failed to get feed")?;
-        ensure!(!feed.aweme_list.is_empty(), "missing post");
-
-        let post = feed.aweme_list.swap_remove(0);
-        ensure!(post.aweme_id == video_id);
-
-        Ok(self
-            .inner
-            .post_page_cache
-            .insert_and_get(url.to_string(), post))
-    }
-
-    async fn create_reencoded_file(
-        &self,
-        id: u64,
-        url: Url,
-        video_duration: u64,
-    ) -> anyhow::Result<Utf8PathBuf> {
-        ensure!(
-            url.path_segments()
-                .and_then(|mut path| path.next_back()?.rsplit_once('.'))
-                .is_some_and(|(_stem, extension)| extension == "mp4")
-        );
-
-        let client = self.inner.client.client.clone();
+    async fn create_reencoded_file(&self, id: u64) -> anyhow::Result<Utf8PathBuf> {
+        let client = self.inner.tikwm_client.client.clone();
         let video_encoder = self.inner.video_encoder;
 
         let reencoded_file_name = format!("{id}-reencoded.mp4");
@@ -228,15 +200,44 @@ impl TikTokData {
             Ok(Some(metadata)) => metadata,
             Ok(None) => {
                 // File not present. Download it.
-                info!("downloading tiktok video with with id {id:?} from url {url:?}");
+                info!("downloading tiktok video {id:?} from tikwm");
 
-                async {
-                    nd_util::download_to_path(&client, url.as_str(), &file_path).await?;
-                    tokio::fs::metadata(&file_path)
-                        .await
-                        .context("failed to get file metadata")
-                }
-                .await?
+                let create_download_response = self
+                    .inner
+                    .tikwm_client
+                    .create_download_task(itoa::Buffer::new().format(id))
+                    .await
+                    .context("failed to create video download")?;
+                ensure!(create_download_response.id == id);
+
+                let download_task_result = self
+                    .inner
+                    .tikwm_client
+                    .get_task_result(&create_download_response.task_id)
+                    .await
+                    .context("failed to create video download")?;
+
+                info!(
+                    "downloading tikwm from {:?}",
+                    download_task_result.download_url.as_str()
+                );
+                ensure!(
+                    download_task_result
+                        .download_url
+                        .path_segments()
+                        .and_then(|mut path| path.next_back()?.rsplit_once('.'))
+                        .is_some_and(|(_stem, extension)| extension == "mp4")
+                );
+
+                nd_util::download_to_path(
+                    &client,
+                    download_task_result.download_url.as_str(),
+                    &file_path,
+                )
+                .await?;
+                tokio::fs::metadata(&file_path)
+                    .await
+                    .context("failed to get file metadata")?
             }
             Err(e) => {
                 return Err(e).context("failed to get metadata of file");
@@ -247,6 +248,11 @@ impl TikTokData {
         if metadata.len() < FILE_SIZE_LIMIT_BYTES {
             return Ok(file_path);
         }
+
+        let ffprobe_result = tokio_ffmpeg_cli::probe(file_path.as_str())
+            .await
+            .context("failed to ffprobe")?;
+        let video_duration = Duration::from_secs_f64(ffprobe_result.format.duration);
 
         // We target half of the maximum size to give ourselves some lee-way.
         // This merely sets the target bit-rate, and we don't take into account audio size.
@@ -370,21 +376,15 @@ impl TikTokData {
     }
 
     /// Get video data, using the cache if needed.
-    pub async fn get_video_data_cached(
-        &self,
-        id: u64,
-        url: &Url,
-        video_duration: u64,
-    ) -> anyhow::Result<Arc<Utf8Path>> {
+    pub async fn get_video_data_cached(&self, id: u64) -> anyhow::Result<Arc<Utf8Path>> {
         self.inner
             .video_download_request_map
             .get_or_fetch(id.to_string(), || {
                 let self_clone = self.clone();
-                let url = url.clone();
 
                 async move {
                     self_clone
-                        .create_reencoded_file(id, url, video_duration)
+                        .create_reencoded_file(id)
                         .await
                         .map(Arc::from)
                         .map_err(ArcAnyhowError::new)
@@ -403,25 +403,10 @@ impl TikTokData {
         loading_reaction: &mut Option<LoadingReaction>,
         delete_link: bool,
     ) -> anyhow::Result<()> {
-        let (video_url, video_id, video_duration) = {
-            let post = self.get_post_cached(url.as_str()).await?;
-            let post = post.data();
-
-            let video_url = post
-                .video
-                .download_addr
-                .url_list
-                .first()
-                .context("missing video url")?
-                .clone();
-            let video_id: u64 = post.aweme_id;
-            let video_duration = post.video.duration;
-
-            (video_url, video_id, video_duration)
-        };
+        let url_data = parse_tiktok_url(url)?;
 
         let video_path = self
-            .get_video_data_cached(video_id, &video_url, video_duration)
+            .get_video_data_cached(url_data.id)
             .await
             .context("failed to download tiktok video")?;
 
@@ -534,4 +519,26 @@ pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Comman
         })
         .build()
         .context("failed to build command")
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse() -> anyhow::Result<()> {
+        let urls = [
+            "https://www.tiktok.com/@uproxxedge/video/7099503758639451438",
+            "https://tiktok.com/@uproxxedge/video/7099503758639451438",
+        ];
+
+        for url in urls.iter() {
+            let url = Url::parse(url)?;
+
+            let url_data = parse_tiktok_url(&url)?;
+            assert!(url_data.id == 7099503758639451438);
+        }
+
+        Ok(())
+    }
 }
