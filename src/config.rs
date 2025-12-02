@@ -27,6 +27,7 @@ pub struct Config {
     pub token: String,
 
     /// The application id
+    #[serde(rename = "application-id")]
     pub application_id: u64,
 
     /// Prefix for the bot
@@ -37,9 +38,11 @@ pub struct Config {
     pub status: Option<StatusConfig>,
 
     /// Data dir
+    #[serde(rename = "data-dir")]
     pub data_dir: Utf8PathBuf,
 
     /// The test guild
+    #[serde(rename = "test-guild")]
     pub test_guild: Option<GuildId>,
 
     /// DeviantArt config
@@ -98,17 +101,6 @@ pub struct LogConfig {
     /// The logging directives.
     #[serde(default = "LogConfig::default_directives")]
     pub directives: Vec<String>,
-
-    /// Whether to use opentelemetry
-    #[serde(default, rename = "opentelemetry")]
-    pub opentelemetry: bool,
-
-    /// The OTLP endpoint
-    pub endpoint: Option<String>,
-
-    /// Headers
-    #[serde(default)]
-    pub headers: HashMap<String, String>,
 }
 
 impl LogConfig {
@@ -127,10 +119,6 @@ impl Default for LogConfig {
     fn default() -> Self {
         Self {
             directives: Self::default_directives(),
-
-            opentelemetry: false,
-            endpoint: None,
-            headers: HashMap::new(),
         }
     }
 }
