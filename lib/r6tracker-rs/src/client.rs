@@ -98,8 +98,10 @@ mod test {
     const VALID_USER: &str = "smack.jjfozzil";
     const INVALID_USER: &str = "aaaaabbaaaa";
 
+    // Does not work on CI
     #[tokio::test]
-    async fn it_works() {
+    #[ignore]
+    async fn get_profile() {
         let client = Client::new();
 
         let profile = client
@@ -118,7 +120,9 @@ mod test {
         assert!(matches!(profile_err, Error::EmptyUsername));
     }
 
+    // Does not work on CI
     #[tokio::test]
+    #[ignore]
     async fn invalid_user() {
         let client = Client::new();
 
