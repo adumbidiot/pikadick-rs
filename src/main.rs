@@ -102,8 +102,8 @@ use tracing::{
 use tracing_appender::non_blocking::WorkerGuard;
 use url::Url;
 
-// #[global_allocator]
-// static GLOBAL: MiMalloc = MiMalloc;
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 const TOKIO_RT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
