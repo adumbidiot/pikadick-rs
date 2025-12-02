@@ -53,7 +53,7 @@ pub use self::{
     urban::URBAN_COMMAND,
     uwuify::UWUIFY_COMMAND,
     vaporwave::VAPORWAVE_COMMAND,
-    xkcd::XKCD_COMMAND,
+    xkcd::xkcd,
     yodaspeak::yodaspeak,
     zalgo::zalgo,
 };
