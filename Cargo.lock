@@ -307,15 +307,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-rusqlite"
-version = "0.0.0"
-dependencies = [
- "rusqlite",
- "thiserror 2.0.17",
- "tokio",
-]
-
-[[package]]
 name = "async-signal"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3115,7 +3106,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "argh",
- "async-rusqlite",
  "bewu-util",
  "bincode",
  "bitflags 2.10.0",
