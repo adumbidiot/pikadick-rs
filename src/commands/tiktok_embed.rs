@@ -433,7 +433,7 @@ impl TikTokData {
 
 /// Convert a bool to a str
 fn bool_to_str(value: bool) -> &'static str {
-    if value { "True" } else { "False" }
+    if value { "Yes" } else { "No" }
 }
 
 #[poise::command(

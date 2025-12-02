@@ -282,13 +282,6 @@ impl TypeMapKey for ClientDataKey {
     type Value = ClientData;
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct SlashFrameworkKey;
-
-impl TypeMapKey for SlashFrameworkKey {
-    type Value = pikadick_slash_framework::Framework;
-}
-
 #[help]
 async fn help(
     ctx: &Context,

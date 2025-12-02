@@ -3207,7 +3207,6 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "parking_lot",
- "pikadick-slash-framework",
  "pikadick-system-info",
  "pikadick-util",
  "poise",
@@ -3250,25 +3249,6 @@ dependencies = [
  "xkcd",
  "yodaspeak",
  "zalgo",
-]
-
-[[package]]
-name = "pikadick-slash-framework"
-version = "0.0.0"
-dependencies = [
- "pikadick-slash-framework-derive",
- "serenity",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "pikadick-slash-framework-derive"
-version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.111",
 ]
 
 [[package]]
