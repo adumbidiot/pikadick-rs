@@ -102,7 +102,39 @@ use tracing::{
 use tracing_appender::non_blocking::WorkerGuard;
 use url::Url;
 
+// #[global_allocator]
+// static GLOBAL: MiMalloc = MiMalloc;
+
 const TOKIO_RT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+/*
+fn rusqlite_log_handler(error_code: i32, message: &str) {
+    use nd_async_rusqlite::rusqlite::ffi::Error;
+    use nd_async_rusqlite::rusqlite::ffi::SQLITE_NOTICE;
+    use nd_async_rusqlite::rusqlite::ffi::SQLITE_WARNING;
+
+    let error = Error::new(error_code);
+
+    match error_code & 0xff {
+        // Couldn't figure out how to dedupe this..
+        SQLITE_NOTICE => tracing::info!(
+            target: "sqlite",
+            code = %error,
+            "{message}",
+        ),
+        SQLITE_WARNING => tracing::warn!(
+            target: "sqlite",
+            code = %error,
+             "{message}"
+        ),
+        _ => tracing::error!(
+            target: "sqlite",
+            code = %error,
+             "{message}",
+        ),
+    }
+}
+*/
 
 struct Handler;
 
@@ -460,21 +492,8 @@ async fn process_dispatch_error_future<'fut>(
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     /*
-    // Create second prefix that is uppercase so we are case-insensitive
-    let config_prefix = config.prefix.clone();
-    let uppercase_prefix = config_prefix.to_uppercase();
-    */
-
-    /*
-    // Build the standard framework
-    info!("using prefix \"{config_prefix}\"");
-    let framework_config = StandardFrameworkConfiguration::new()
-        .prefixes([config_prefix, uppercase_prefix])
-        .case_insensitivity(true);
     let framework = StandardFramework::new();
-    framework.configure(framework_config);
     let framework = framework
-        .help(&HELP)
         .group(&GENERAL_GROUP)
         .bucket("system", BucketBuilder::new_channel().delay(30))
         .await
@@ -633,7 +652,6 @@ fn setup(cli_options: CliOptions) -> anyhow::Result<SetupData> {
     std::fs::create_dir_all(config.log_file_dir()).context("failed to create log file dir")?;
     std::fs::create_dir_all(config.cache_dir()).context("failed to create cache dir")?;
 
-    // TODO: Init db
     eprintln!("opening database...");
     let database_path = config.data_dir.join("pikadick.sqlite");
 

@@ -72,6 +72,7 @@ zalgo = { git = "https://github.com/nathaniel-daniel/zalgo-rs", default-features
 
 # Optional
 openssl = { version = "0.10.75", optional = true, features = [ "vendored" ] }
+mimalloc = "0.1.48"
 
 [features]
 # Note: This is needed for cross comp
