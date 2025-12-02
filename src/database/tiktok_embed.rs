@@ -70,7 +70,7 @@ impl Database {
                 )
                 .optional()
                 .context("failed to read database")
-                .map(|v| v.unwrap_or_default())
+                .map(|v| v.unwrap_or_else(TikTokEmbedFlags::empty))
         })
         .await?
     }

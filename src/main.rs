@@ -508,7 +508,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::help(),
                 self::commands::nekos(),
                 self::commands::ping(),
-                // self::commands::tiktok_embed(),
+                self::commands::tiktok_embed(),
                 self::commands::r6tracker(),
                 self::commands::rule34(),
                 self::commands::yodaspeak(),

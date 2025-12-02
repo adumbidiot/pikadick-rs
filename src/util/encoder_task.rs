@@ -9,7 +9,7 @@ use tokio_stream::{
     StreamExt,
     wrappers::ReceiverStream,
 };
-use tracing::info;
+use tracing::debug;
 
 /// A message for the encoder task
 enum Message {
@@ -189,7 +189,7 @@ async fn encoder_task_impl(mut rx: tokio::sync::mpsc::Receiver<Message>) {
                             if status.success() {
                                 encoders.push(encoder);
                             } else {
-                                info!("skipping \"{}\" as it failed a sanity check", encoder.name);
+                                debug!("skipping \"{}\" as it failed a sanity check", encoder.name);
                             }
                         }
 

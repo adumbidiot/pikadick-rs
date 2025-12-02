@@ -1,6 +1,8 @@
 use crate::{
     ClientDataKey,
     LoadingReaction,
+    PoiseContext,
+    PoiseError,
     TikTokEmbedFlags,
     util::EncoderTask,
 };
@@ -17,12 +19,11 @@ use nd_util::{
     DropRemovePath,
 };
 use pikadick_util::RequestMap;
+use poise::CreateReply;
 use serenity::{
     builder::{
         CreateAttachment,
         CreateEmbed,
-        CreateInteractionResponse,
-        CreateInteractionResponseMessage,
         CreateMessage,
     },
     model::prelude::*,
@@ -394,7 +395,7 @@ impl TikTokData {
             .map_err(From::from)
     }
 
-    /// Try embedding a url
+    /// Try embedding a url.
     pub async fn try_embed_url(
         &self,
         ctx: &Context,
@@ -435,90 +436,77 @@ fn bool_to_str(value: bool) -> &'static str {
     if value { "True" } else { "False" }
 }
 
-/// Options for tiktok-embed
-#[derive(Debug, pikadick_slash_framework::FromOptions)]
-struct TikTokEmbedOptions {
-    /// Whether embeds should be enabled for this server
-    #[pikadick_slash_framework(description = "Whether embeds should be enabled for this server")]
-    enable: Option<bool>,
-
-    /// Whether source messages should be deleted
-    #[pikadick_slash_framework(
-        rename = "delete-link",
-        description = "Whether source messages should be deleted"
-    )]
+#[poise::command(
+    slash_command,
+    rename = "tiktok-embed",
+    description_localized("en-US", "Configure tiktok embeds for this server"),
+    check = "crate::checks::enabled",
+    required_permissions = "ADMINISTRATOR"
+)]
+pub async fn tiktok_embed(
+    ctx: PoiseContext<'_>,
+    #[description = "Whether embeds should be enabled for this server"] enable: Option<bool>,
+    #[description = "Whether source messages should be deleted"]
+    #[rename = "delete-link"]
     delete_link: Option<bool>,
-}
+) -> Result<(), PoiseError> {
+    let data_lock = ctx.serenity_context().data.read().await;
+    let client_data = data_lock.get::<ClientDataKey>().unwrap();
+    let db = client_data.db.clone();
+    drop(data_lock);
 
-/// Create a slash command
-pub fn create_slash_command() -> anyhow::Result<pikadick_slash_framework::Command> {
-    use pikadick_slash_framework::FromOptions;
-
-    pikadick_slash_framework::CommandBuilder::new()
-        .name("tiktok-embed")
-        .description("Configure tiktok embeds for this server")
-        .check(crate::checks::admin::create_slash_check)
-        .arguments(TikTokEmbedOptions::get_argument_params()?.into_iter())
-        .on_process(|ctx, interaction, args: TikTokEmbedOptions| async move {
-            let data_lock = ctx.data.read().await;
-            let client_data = data_lock.get::<ClientDataKey>().unwrap();
-            let db = client_data.db.clone();
-            drop(data_lock);
-
-            let guild_id = match interaction.guild_id {
-                Some(id) => id,
-                None => {
-                    let message_builder = CreateInteractionResponseMessage::new()
-                        .content("Missing server id. Are you in a server right now?");
-                    let response = CreateInteractionResponse::Message(message_builder);
-                    interaction.create_response(&ctx.http, response).await?;
-                    return Ok(());
-                }
-            };
-
-            let mut set_flags = TikTokEmbedFlags::empty();
-            let mut unset_flags = TikTokEmbedFlags::empty();
-
-            if let Some(enable) = args.enable {
-                if enable {
-                    set_flags.insert(TikTokEmbedFlags::ENABLED);
-                } else {
-                    unset_flags.insert(TikTokEmbedFlags::ENABLED);
-                }
-            }
-
-            if let Some(enable) = args.delete_link {
-                if enable {
-                    set_flags.insert(TikTokEmbedFlags::DELETE_LINK);
-                } else {
-                    unset_flags.insert(TikTokEmbedFlags::DELETE_LINK);
-                }
-            }
-
-            let (_old_flags, new_flags) = db
-                .set_tiktok_embed_flags(guild_id, set_flags, unset_flags)
+    let guild_id = match ctx.guild_id() {
+        Some(id) => id,
+        None => {
+            ctx.reply("Missing server id. Are you in a server right now?")
                 .await?;
+            return Ok(());
+        }
+    };
 
-            let embed_builder = CreateEmbed::new()
-                .title("TikTok Embeds")
-                .field(
-                    "Enabled?",
-                    bool_to_str(new_flags.contains(TikTokEmbedFlags::ENABLED)),
-                    false,
-                )
-                .field(
-                    "Delete link?",
-                    bool_to_str(new_flags.contains(TikTokEmbedFlags::DELETE_LINK)),
-                    false,
-                );
-            let message_builder = CreateInteractionResponseMessage::new().embed(embed_builder);
-            let response = CreateInteractionResponse::Message(message_builder);
-            interaction.create_response(&ctx.http, response).await?;
+    let mut set_flags = TikTokEmbedFlags::empty();
+    let mut unset_flags = TikTokEmbedFlags::empty();
+    if let Some(enable) = enable {
+        if enable {
+            set_flags.insert(TikTokEmbedFlags::ENABLED);
+        } else {
+            unset_flags.insert(TikTokEmbedFlags::ENABLED);
+        }
+    }
+    if let Some(enable) = delete_link {
+        if enable {
+            set_flags.insert(TikTokEmbedFlags::DELETE_LINK);
+        } else {
+            unset_flags.insert(TikTokEmbedFlags::DELETE_LINK);
+        }
+    }
 
-            Ok(())
-        })
-        .build()
-        .context("failed to build command")
+    let flags = if set_flags.is_empty() && unset_flags.is_empty() {
+        db.get_tiktok_embed_flags(guild_id).await?
+    } else {
+        let (_old_flags, new_flags) = db
+            .set_tiktok_embed_flags(guild_id, set_flags, unset_flags)
+            .await?;
+        new_flags
+    };
+
+    let embed_builder = CreateEmbed::new()
+        .title("TikTok Embeds")
+        .field(
+            "Enabled?",
+            bool_to_str(flags.contains(TikTokEmbedFlags::ENABLED)),
+            false,
+        )
+        .field(
+            "Delete link?",
+            bool_to_str(flags.contains(TikTokEmbedFlags::DELETE_LINK)),
+            false,
+        );
+
+    ctx.send(CreateReply::default().reply(true).embed(embed_builder))
+        .await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
