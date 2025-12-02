@@ -62,6 +62,7 @@ use anyhow::{
     bail,
     ensure,
 };
+use mimalloc::MiMalloc;
 use pikadick_util::AsyncLockFile;
 use poise::structs::FrameworkError;
 use serenity::{
@@ -107,11 +108,12 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 const TOKIO_RT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
-/*
 fn rusqlite_log_handler(error_code: i32, message: &str) {
-    use nd_async_rusqlite::rusqlite::ffi::Error;
-    use nd_async_rusqlite::rusqlite::ffi::SQLITE_NOTICE;
-    use nd_async_rusqlite::rusqlite::ffi::SQLITE_WARNING;
+    use nd_async_rusqlite::rusqlite::ffi::{
+        Error,
+        SQLITE_NOTICE,
+        SQLITE_WARNING,
+    };
 
     let error = Error::new(error_code);
 
@@ -134,7 +136,6 @@ fn rusqlite_log_handler(error_code: i32, message: &str) {
         ),
     }
 }
-*/
 
 struct Handler;
 
@@ -598,7 +599,6 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
 struct SetupData {
     tokio_rt: tokio::runtime::Runtime,
     config: Arc<Config>,
-    database: Database,
     lock_file: AsyncLockFile,
     worker_guard: WorkerGuard,
 }
@@ -652,16 +652,6 @@ fn setup(cli_options: CliOptions) -> anyhow::Result<SetupData> {
     std::fs::create_dir_all(config.log_file_dir()).context("failed to create log file dir")?;
     std::fs::create_dir_all(config.cache_dir()).context("failed to create cache dir")?;
 
-    eprintln!("opening database...");
-    let database_path = config.data_dir.join("pikadick.sqlite");
-
-    // Safety: This is called before any other sqlite functions.
-    // TODO: Is there a good reason to not remake the db if it is missing?
-    let database = unsafe {
-        Database::blocking_new(database_path, true) // missing_data_dir
-            .context("failed to open database")?
-    };
-
     // Everything past here is assumed to need tokio
     let _enter_guard = tokio_rt.handle().enter();
 
@@ -672,7 +662,6 @@ fn setup(cli_options: CliOptions) -> anyhow::Result<SetupData> {
     Ok(SetupData {
         tokio_rt,
         config,
-        database,
         lock_file,
         worker_guard,
     })
@@ -690,6 +679,15 @@ fn main() -> anyhow::Result<()> {
     // and this will NOT run destructors if it does so.
     let cli_options = argh::from_env();
 
+    // Safety:
+    // 1. SQLite has not been called yet.
+    // 2. The logging callback does not invoke SQLite.
+    // 3. The logging callback is threadsafe.
+    unsafe {
+        nd_async_rusqlite::rusqlite::trace::config_log(Some(rusqlite_log_handler))
+            .context("failed to install sqlite log handler")?;
+    }
+
     let setup_data = setup(cli_options)?;
     real_main(setup_data)?;
     Ok(())
@@ -699,10 +697,9 @@ fn main() -> anyhow::Result<()> {
 fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
     // We spawn this is a seperate thread/task as the main thread does not have enough stack space
     let _enter_guard = setup_data.tokio_rt.enter();
-    let ret = setup_data.tokio_rt.block_on(tokio::spawn(async_main(
-        setup_data.config,
-        setup_data.database,
-    )));
+    let ret = setup_data
+        .tokio_rt
+        .block_on(tokio::spawn(async_main(setup_data.config)));
 
     let shutdown_start = Instant::now();
     info!(
@@ -729,12 +726,18 @@ fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
 }
 
 /// The async entry
-async fn async_main(config: Arc<Config>, database: Database) -> anyhow::Result<()> {
+async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
     // TODO: See if it is possible to start serenity without a network
     info!("setting up client...");
     let mut client = setup_client(config.clone())
         .await
         .context("failed to set up client")?;
+
+    info!("opening database...");
+    let database_path = config.data_dir.join("pikadick.sqlite");
+    let database = Database::new(database_path)
+        .await
+        .context("failed to open database")?;
 
     let client_data = ClientData::init(client.shard_manager.clone(), config, database.clone())
         .await

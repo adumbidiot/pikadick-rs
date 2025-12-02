@@ -2730,6 +2730,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nd-async-rusqlite"
+version = "0.0.0"
+source = "git+https://github.com/nathaniel-daniel/nd-async-rusqlite-rs#40871cb403eba4bde8063e89964c101d70efe3a7"
+dependencies = [
+ "crossbeam-channel",
+ "rusqlite",
+ "tokio",
+]
+
+[[package]]
 name = "nd-util"
 version = "0.0.0"
 source = "git+https://github.com/nathaniel-daniel/nd-util-rs#e5f37ad96b233f2e1e7ec89d0764b52fc75e2ad1"
@@ -3121,6 +3131,7 @@ dependencies = [
  "iqdb",
  "itoa",
  "mimalloc",
+ "nd-async-rusqlite",
  "nd-util",
  "nekos",
  "once_cell",
