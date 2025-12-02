@@ -441,7 +441,7 @@ fn bool_to_str(value: bool) -> &'static str {
     rename = "tiktok-embed",
     description_localized("en-US", "Configure tiktok embeds for this server"),
     check = "crate::checks::enabled",
-    required_permissions = "ADMINISTRATOR"
+    default_member_permissions = "ADMINISTRATOR"
 )]
 pub async fn tiktok_embed(
     ctx: PoiseContext<'_>,

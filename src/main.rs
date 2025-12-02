@@ -322,7 +322,6 @@ async fn help(
     xkcd,
     tic_tac_toe,
     iqdb,
-    reddit,
     leave,
     stop,
     sauce_nao
@@ -503,6 +502,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::ping(),
                 self::commands::tiktok_embed(),
                 self::commands::r6tracker(),
+                self::commands::reddit(),
                 self::commands::rule34(),
                 self::commands::yodaspeak(),
             ],

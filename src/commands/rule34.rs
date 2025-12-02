@@ -21,7 +21,7 @@ const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
 #[derive(Debug)]
 struct InnerRule34Client {
     client: rule34::Client,
-    cache: AsyncTimedLruCache<String, Result<Arc<rule34::PostList>, ArcAnyhowError>>,
+    cache: AsyncTimedLruCache<Option<String>, Result<Arc<rule34::PostList>, ArcAnyhowError>>,
 }
 
 /// A caching rule34 client
@@ -45,14 +45,17 @@ impl Rule34Client {
 
     /// Search for a query.
     #[tracing::instrument(skip(self))]
-    pub async fn list(&self, query: &str) -> Result<Arc<rule34::PostList>, ArcAnyhowError> {
+    pub async fn list(
+        &self,
+        query: Option<String>,
+    ) -> Result<Arc<rule34::PostList>, ArcAnyhowError> {
         self.inner
             .cache
-            .get(query.to_string(), || async {
+            .get(query.clone(), || async move {
                 self.inner
                     .client
                     .list_posts()
-                    .tags(Some(query))
+                    .tags(query.as_deref())
                     .limit(Some(1_000))
                     .execute()
                     .await
@@ -71,8 +74,8 @@ impl Rule34Client {
 )]
 pub async fn rule34(
     ctx: PoiseContext<'_>,
-    #[description = "A rule34.xxx search query. Supports the same syntax as the website."]
-    query: String,
+    #[description = "The rule34.xxx search query. Supports the same syntax as the website."]
+    query: Option<String>,
 ) -> Result<(), PoiseError> {
     let data_lock = ctx.serenity_context().data.read().await;
     let client_data = data_lock
@@ -81,9 +84,13 @@ pub async fn rule34(
     let client = client_data.rule34_client.clone();
     drop(data_lock);
 
-    info!("searching rule34 for \"{query}\"");
+    let query_format = query
+        .as_deref()
+        .map(|query| format!("{query:?}"))
+        .unwrap_or_else(|| String::from("None"));
+    info!("searching rule34 for {query_format}");
     let result = client
-        .list(&query)
+        .list(query.clone())
         .await
         .context("failed to get search results");
 
@@ -97,7 +104,7 @@ pub async fn rule34(
             if let Some(file_url) = maybe_list_result {
                 file_url
             } else {
-                format!("No results for \"{query}\".")
+                format!("No results for {query_format}.")
             }
         }
         Err(error) => {

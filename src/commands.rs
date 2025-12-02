@@ -41,7 +41,7 @@ pub use self::{
     ping::ping,
     quizizz::QUIZIZZ_COMMAND,
     r6tracker::r6tracker,
-    reddit::REDDIT_COMMAND,
+    reddit::reddit,
     reddit_embed::REDDIT_EMBED_COMMAND,
     rule34::rule34,
     sauce_nao::SAUCE_NAO_COMMAND,
