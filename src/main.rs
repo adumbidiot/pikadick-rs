@@ -307,7 +307,6 @@ async fn help(
 #[commands(
     system,
     quizizz,
-    zalgo,
     shift,
     reddit_embed,
     invite,
@@ -505,6 +504,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
                 self::commands::reddit(),
                 self::commands::rule34(),
                 self::commands::yodaspeak(),
+                self::commands::zalgo(),
             ],
             on_error: |error| {
                 (async move {

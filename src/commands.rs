@@ -55,5 +55,5 @@ pub use self::{
     vaporwave::VAPORWAVE_COMMAND,
     xkcd::XKCD_COMMAND,
     yodaspeak::yodaspeak,
-    zalgo::ZALGO_COMMAND,
+    zalgo::zalgo,
 };
