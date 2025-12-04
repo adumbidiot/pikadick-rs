@@ -48,7 +48,7 @@ pub use self::{
     tiktok_embed::tiktok_embed,
     urban::URBAN_COMMAND,
     uwuify::UWUIFY_COMMAND,
-    vaporwave::VAPORWAVE_COMMAND,
+    vaporwave::vaporwave,
     xkcd::xkcd,
     yodaspeak::yodaspeak,
     zalgo::zalgo,
