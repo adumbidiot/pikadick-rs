@@ -54,7 +54,16 @@ impl Database {
         Ok(Self { database })
     }
 
-    /// Access the database
+    /// Read from the database.
+    async fn read<F, R>(&self, func: F) -> anyhow::Result<R>
+    where
+        F: FnOnce(&mut rusqlite::Connection) -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        Ok(self.database.read(move |database| func(database)).await?)
+    }
+
+    /// Write to the database.
     async fn write<F, R>(&self, func: F) -> anyhow::Result<R>
     where
         F: FnOnce(&mut rusqlite::Connection) -> R + Send + 'static,

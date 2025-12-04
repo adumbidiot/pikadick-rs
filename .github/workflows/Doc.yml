@@ -1,4 +1,4 @@
-name: RustDoc
+name: Doc
 on:
   push:
     branches:

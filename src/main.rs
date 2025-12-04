@@ -29,7 +29,7 @@
 // clippy::too_many_lines
 
 // TODO: Switch to poise
-#![allow(deprecated)]
+#![expect(deprecated)]
 
 //! # Pikadick
 
@@ -67,17 +67,7 @@ use pikadick_util::AsyncLockFile;
 use poise::structs::FrameworkError;
 use serenity::{
     FutureExt,
-    framework::standard::{
-        Args,
-        CommandGroup,
-        CommandResult,
-        HelpOptions,
-        help_commands,
-        macros::{
-            group,
-            help,
-        },
-    },
+    framework::standard::macros::group,
     gateway::{
         ActivityData,
         ShardManager,
@@ -87,7 +77,6 @@ use serenity::{
 };
 use songbird::SerenityInit;
 use std::{
-    collections::HashSet,
     sync::Arc,
     time::{
         Duration,
@@ -127,12 +116,12 @@ fn rusqlite_log_handler(error_code: i32, message: &str) {
         SQLITE_WARNING => tracing::warn!(
             target: "sqlite",
             code = %error,
-             "{message}"
+            "{message}",
         ),
         _ => tracing::error!(
             target: "sqlite",
             code = %error,
-             "{message}",
+            "{message}",
         ),
     }
 }
@@ -313,27 +302,6 @@ pub struct ClientDataKey;
 
 impl TypeMapKey for ClientDataKey {
     type Value = ClientData;
-}
-
-#[help]
-async fn help(
-    ctx: &Context,
-    msg: &Message,
-    args: Args,
-    help_options: &'static HelpOptions,
-    groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>,
-) -> CommandResult {
-    match help_commands::with_embeds(ctx, msg, args, help_options, groups, owners)
-        .await
-        .context("failed to send help")
-    {
-        Ok(_) => {}
-        Err(error) => {
-            error!("{error:?}");
-        }
-    }
-    Ok(())
 }
 
 #[group]

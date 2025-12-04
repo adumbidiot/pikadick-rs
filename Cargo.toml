@@ -10,6 +10,7 @@ authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 [dependencies]
 anyhow = "1.0.100"
 argh = "0.1.13"
+audiopus_sys = { version = "0.2.2", default-features = false }
 bewu-util = { git = "https://github.com/ThatAnnoyingKid/Bewu", version = "0.0.0", features = [ "async-timed-cache-cell", "async-timed-lru-cache" ] }
 bincode = { version = "2.0.1", features = [ "serde" ] }
 bitflags = "2.10.0"
@@ -77,6 +78,9 @@ openssl = { version = "0.10.75", optional = true, features = [ "vendored" ] }
 [features]
 # Note: This is needed for cross comp
 use-openssl-vendored = [ "openssl" ]
+pkg-config = [
+    "audiopus_sys/pkg-config",
+]
 
 [lints.clippy]
 # Deny
@@ -139,6 +143,8 @@ heim = { git = "https://github.com/vectordotdev/heim", branch = "update-nix" }
 
 # Fix ntapi 0.3.0 not compiling on newer Rust versions
 ntapi3 = { version = "0.3.0", git = "https://github.com/MSxDOS/ntapi", rev = "2148881c30e8da6a3ff585efd1c7d8ad125ccd2c", package = "ntapi" }
+
+audiopus_sys = { git = "https://github.com/adumbidiot/audiopus_sys", branch = "pkg-config" }
 
 # To make image drawing times sane
 [profile.dev.package.tiny-skia]
