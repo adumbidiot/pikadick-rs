@@ -9,7 +9,6 @@ use crate::{
         shift::ShiftClient,
         tic_tac_toe::TicTacToeData,
         tiktok_embed::TikTokData,
-        urban::UrbanClient,
     },
     config::Config,
     database::Database,
@@ -41,8 +40,6 @@ pub struct ClientData {
     pub insta_client: insta::Client,
     /// The deviantart client
     pub deviantart_client: DeviantartClient,
-    /// The urban dictionary client
-    pub urban_client: UrbanClient,
     /// The tic tac toe data
     pub tic_tac_toe_data: TicTacToeData,
     /// The iqdb client
@@ -89,7 +86,6 @@ impl ClientData {
             enabled_check_data: Default::default(),
             insta_client: insta::Client::new(),
             deviantart_client,
-            urban_client: Default::default(),
             tic_tac_toe_data: Default::default(),
             iqdb_client: Default::default(),
             sauce_nao_client: SauceNaoClient::new(config.sauce_nao.api_key.as_str()),

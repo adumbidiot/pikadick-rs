@@ -46,7 +46,7 @@ pub use self::{
     system::SYSTEM_COMMAND,
     tic_tac_toe::TIC_TAC_TOE_COMMAND,
     tiktok_embed::tiktok_embed,
-    urban::URBAN_COMMAND,
+    urban::urban,
     uwuify::uwuify,
     vaporwave::vaporwave,
     xkcd::xkcd,

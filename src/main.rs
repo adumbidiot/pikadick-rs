@@ -315,7 +315,6 @@ impl TypeMapKey for ClientDataKey {
     latency,
     insta_dl,
     deviantart,
-    urban,
     tic_tac_toe,
     iqdb,
     leave,
@@ -341,120 +340,6 @@ async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
     };
 }
 
-/*
-#[tracing::instrument(skip(_ctx, msg), fields(author = %msg.author.id, guild = ?msg.guild_id, content = %msg.content))]
-fn before_handler<'fut>(
-    _ctx: &'fut Context,
-    msg: &'fut Message,
-    cmd_name: &'fut str,
-) -> BoxFuture<'fut, bool> {
-    info!("allowing command to process");
-    async move { true }.boxed()
-}
-
-fn after_handler<'fut>(
-    _ctx: &'fut Context,
-    _msg: &'fut Message,
-    command_name: &'fut str,
-    command_result: CommandResult,
-) -> BoxFuture<'fut, ()> {
-    async move {
-        if let Err(error) = command_result {
-            error!("failed to process command \"{command_name}\": {error}");
-        }
-    }
-    .boxed()
-}
-
-fn unrecognised_command_handler<'fut>(
-    ctx: &'fut Context,
-    msg: &'fut Message,
-    command_name: &'fut str,
-) -> BoxFuture<'fut, ()> {
-    async move {
-        error!("unrecognized command \"{command_name}\"");
-
-        let _ = msg
-            .channel_id
-            .say(
-                &ctx.http,
-                format!("Could not find command \"{command_name}\""),
-            )
-            .await
-            .is_ok();
-    }
-    .boxed()
-}
-
-fn process_dispatch_error<'fut>(
-    ctx: &'fut Context,
-    msg: &'fut Message,
-    error: DispatchError,
-    cmd_name: &'fut str,
-) -> BoxFuture<'fut, ()> {
-    process_dispatch_error_future(ctx, msg, error, cmd_name).boxed()
-}
-
-async fn process_dispatch_error_future<'fut>(
-    ctx: &'fut Context,
-    msg: &'fut Message,
-    error: DispatchError,
-    _cmd_name: &'fut str,
-) {
-    match error {
-        DispatchError::Ratelimited(duration) => {
-            let seconds = duration.as_secs();
-            let _ = msg
-                .channel_id
-                .say(
-                    &ctx.http,
-                    format!("Wait {seconds} seconds to use that command again"),
-                )
-                .await
-                .is_ok();
-        }
-        DispatchError::NotEnoughArguments { min, given } => {
-            let _ = msg
-                .channel_id
-                .say(
-                    &ctx.http,
-                    format!(
-                        "Expected at least {min} argument(s) for this command, but only got {given}",
-                    ),
-                )
-                .await
-                .is_ok();
-        }
-        DispatchError::TooManyArguments { max, given } => {
-            let response_str = format!("Expected no more than {max} argument(s) for this command, but got {given}. Try using quotation marks if your argument has spaces.");
-            let _ = msg.channel_id.say(&ctx.http, response_str).await.is_ok();
-        }
-        DispatchError::CheckFailed(check_name, reason) => match reason {
-            Reason::User(user_reason_str) => {
-                let _ = msg.channel_id.say(&ctx.http, user_reason_str).await.is_ok();
-            }
-            _ => {
-                let _ = msg
-                    .channel_id
-                    .say(
-                        &ctx.http,
-                        format!("\"{check_name}\" check failed: {reason:#?}"),
-                    )
-                    .await
-                    .is_ok();
-            }
-        },
-        error => {
-            let _ = msg
-                .channel_id
-                .say(&ctx.http, format!("Unhandled Dispatch Error: {error:?}"))
-                .await
-                .is_ok();
-        }
-    };
-}
-*/
-
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
     let poise_data = Arc::new(PoiseDataInner::new(config.clone()));
@@ -468,6 +353,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
             self::commands::r6tracker(),
             self::commands::reddit(),
             self::commands::rule34(),
+            self::commands::urban(),
             self::commands::uwuify(),
             self::commands::vaporwave(),
             self::commands::xkcd(),
@@ -478,26 +364,51 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
             (async move {
                 match error {
                     FrameworkError::CommandCheckFailed { ctx, .. } => {
-                        if let Err(error) = ctx.reply("Command is disabled").await {
+                        let result = ctx.reply("Command check failed").await;
+                        if let Err(error) = result {
                             error!("{error}");
                         }
                     }
                     FrameworkError::NsfwOnly { ctx, .. } => {
-                        if let Err(error) = ctx
+                        let result = ctx
                             .reply("This command can only be used in nsfw channels")
-                            .await
-                        {
+                            .await;
+                        if let Err(error) = result {
                             error!("{error}");
                         }
                     }
                     FrameworkError::Command { ctx, error, .. } => {
                         warn!("{error:?}");
-                        if let Err(error) = ctx.reply(format!("{error}")).await {
+
+                        let result = ctx.reply(format!("{error}")).await;
+                        if let Err(error) = result {
+                            error!("{error}");
+                        }
+                    }
+                    FrameworkError::CooldownHit {
+                        ctx,
+                        remaining_cooldown,
+                        ..
+                    } => {
+                        let seconds = remaining_cooldown.as_secs_f64();
+                        let result = ctx
+                            .reply(format!(
+                                "Wait {seconds:2} seconds to use that command again"
+                            ))
+                            .await;
+                        if let Err(error) = result {
                             error!("{error}");
                         }
                     }
                     _ => {
                         error!("{error}");
+
+                        if let Some(ctx) = error.ctx() {
+                            let result = ctx.reply(format!("{error}")).await;
+                            if let Err(error) = result {
+                                error!("{error}");
+                            }
+                        }
                     }
                 }
             })
