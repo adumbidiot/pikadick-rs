@@ -2,7 +2,6 @@ pub mod cmd;
 pub mod deviantart;
 pub mod help;
 pub mod insta_dl;
-pub mod invite;
 pub mod iqdb;
 pub mod latency;
 pub mod leave;
@@ -31,7 +30,6 @@ pub use self::{
     deviantart::DEVIANTART_COMMAND,
     help::help,
     insta_dl::INSTA_DL_COMMAND,
-    invite::INVITE_COMMAND,
     iqdb::IQDB_COMMAND,
     latency::LATENCY_COMMAND,
     leave::LEAVE_COMMAND,

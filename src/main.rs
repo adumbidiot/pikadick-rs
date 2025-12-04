@@ -310,7 +310,6 @@ impl TypeMapKey for ClientDataKey {
     quizizz,
     shift,
     reddit_embed,
-    invite,
     vaporwave,
     cmd,
     latency,
