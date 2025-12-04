@@ -1,5 +1,4 @@
 use crate::{
-    ClientDataKey,
     PoiseContext,
     PoiseError,
 };
@@ -100,15 +99,8 @@ pub async fn nekos(
 ) -> Result<(), PoiseError> {
     let nsfw = nsfw.unwrap_or(false);
 
-    let data_lock = ctx.serenity_context().data.read().await;
-    let client_data = data_lock
-        .get::<ClientDataKey>()
-        .expect("failed to get client data");
-    let nekos_client = client_data.nekos_client.clone();
-    drop(data_lock);
-
     ctx.defer().await?;
-    let content = match nekos_client.get_random(nsfw).await {
+    let content = match ctx.data().nekos_client.get_random(nsfw).await {
         Ok(url) => url.into(),
         Err(error) => {
             error!("{error:?}");

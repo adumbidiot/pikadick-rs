@@ -1,5 +1,4 @@
 use crate::{
-    ClientDataKey,
     PoiseContext,
     PoiseError,
 };
@@ -12,12 +11,9 @@ use tracing::error;
     check = "crate::checks::enabled"
 )]
 pub async fn xkcd(ctx: PoiseContext<'_>) -> Result<(), PoiseError> {
-    let data_lock = ctx.serenity_context().data.read().await;
-    let client_data = data_lock.get::<ClientDataKey>().unwrap();
-    let client = client_data.xkcd_client.clone();
-    drop(data_lock);
-
-    let content = match client
+    let content = match ctx
+        .data()
+        .xkcd_client
         .get_random()
         .await
         .context("failed to get xkcd comic")

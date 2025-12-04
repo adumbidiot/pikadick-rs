@@ -40,6 +40,7 @@ pub mod commands;
 pub mod config;
 pub mod database;
 pub mod logger;
+mod poise_data;
 pub mod setup;
 pub mod util;
 
@@ -55,6 +56,7 @@ use crate::{
         Database,
         model::TikTokEmbedFlags,
     },
+    poise_data::PoiseData as PoiseDataInner,
     util::LoadingReaction,
 };
 use anyhow::{
@@ -128,8 +130,7 @@ fn rusqlite_log_handler(error_code: i32, message: &str) {
 
 struct Handler;
 
-#[derive(Debug)]
-pub struct PoiseData {}
+type PoiseData = Arc<crate::poise_data::PoiseData>;
 type PoiseError = Box<dyn std::error::Error + Send + Sync>;
 type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
 
@@ -456,95 +457,81 @@ async fn process_dispatch_error_future<'fut>(
 
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
-    /*
-    let framework = StandardFramework::new();
-    let framework = framework
-        .group(&GENERAL_GROUP)
-        .bucket("system", BucketBuilder::new_channel().delay(30))
-        .await
-        .bucket("quizizz", BucketBuilder::new_channel().delay(10))
-        .await
-        .bucket("insta-dl", BucketBuilder::new_channel().delay(10))
-        .await
-        .bucket("ttt-board", BucketBuilder::new_channel().delay(1))
-        .await
-        .bucket("default", BucketBuilder::new_channel().delay(1))
-        .await
-        .before(before_handler)
-        .after(after_handler)
-        .unrecognised_command(unrecognised_command_handler)
-        .on_dispatch_error(process_dispatch_error);
-    */
-    let test_guild_id = config.test_guild;
-    let framework = poise::Framework::builder()
-        .options(poise::FrameworkOptions {
-            commands: vec![
-                self::commands::help(),
-                self::commands::nekos(),
-                self::commands::ping(),
-                self::commands::tiktok_embed(),
-                self::commands::r6tracker(),
-                self::commands::reddit(),
-                self::commands::rule34(),
-                self::commands::uwuify(),
-                self::commands::vaporwave(),
-                self::commands::xkcd(),
-                self::commands::yodaspeak(),
-                self::commands::zalgo(),
-            ],
-            on_error: |error| {
-                (async move {
-                    match error {
-                        FrameworkError::CommandCheckFailed { ctx, .. } => {
-                            if let Err(error) = ctx.reply("Command is disabled").await {
-                                error!("{error}");
-                            }
-                        }
-                        FrameworkError::NsfwOnly { ctx, .. } => {
-                            if let Err(error) = ctx
-                                .reply("This command can only be used in nsfw channels")
-                                .await
-                            {
-                                error!("{error}");
-                            }
-                        }
-                        FrameworkError::Command { ctx, error, .. } => {
-                            warn!("{error:?}");
-                            if let Err(error) = ctx.reply(format!("{error}")).await {
-                                error!("{error}");
-                            }
-                        }
-                        _ => {
+    let poise_data = Arc::new(PoiseDataInner::new(config.clone()));
+
+    let framework_options = poise::FrameworkOptions {
+        commands: vec![
+            self::commands::help(),
+            self::commands::nekos(),
+            self::commands::ping(),
+            self::commands::tiktok_embed(),
+            self::commands::r6tracker(),
+            self::commands::reddit(),
+            self::commands::rule34(),
+            self::commands::uwuify(),
+            self::commands::vaporwave(),
+            self::commands::xkcd(),
+            self::commands::yodaspeak(),
+            self::commands::zalgo(),
+        ],
+        on_error: |error| {
+            (async move {
+                match error {
+                    FrameworkError::CommandCheckFailed { ctx, .. } => {
+                        if let Err(error) = ctx.reply("Command is disabled").await {
                             error!("{error}");
                         }
                     }
-                })
-                .boxed()
-            },
-            ..Default::default()
-        })
-        .setup(move |ctx, _ready, framework| {
-            Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                if let Some(test_guild_id) = test_guild_id {
-                    poise::builtins::register_in_guild(
-                        ctx,
-                        &framework.options().commands,
-                        test_guild_id,
-                    )
-                    .await?;
+                    FrameworkError::NsfwOnly { ctx, .. } => {
+                        if let Err(error) = ctx
+                            .reply("This command can only be used in nsfw channels")
+                            .await
+                        {
+                            error!("{error}");
+                        }
+                    }
+                    FrameworkError::Command { ctx, error, .. } => {
+                        warn!("{error:?}");
+                        if let Err(error) = ctx.reply(format!("{error}")).await {
+                            error!("{error}");
+                        }
+                    }
+                    _ => {
+                        error!("{error}");
+                    }
                 }
-                info!("registered commands");
-
-                Ok::<PoiseData, PoiseError>(PoiseData {})
             })
-        })
-        .build();
+            .boxed()
+        },
+        ..Default::default()
+    };
+
+    let framework = {
+        let config = config.clone();
+        poise::Framework::builder()
+            .options(framework_options)
+            .setup(move |ctx, _ready, framework| {
+                Box::pin(async move {
+                    poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                    if let Some(test_guild_id) = config.test_guild {
+                        poise::builtins::register_in_guild(
+                            ctx,
+                            &framework.options().commands,
+                            test_guild_id,
+                        )
+                        .await?;
+                    }
+                    info!("registered commands");
+
+                    Ok::<PoiseData, PoiseError>(poise_data)
+                })
+            })
+            .build()
+    };
 
     // Build the client
-    let config_token = config.token.clone();
     let client = Client::builder(
-        config_token,
+        config.token.clone(),
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
     )
     .event_handler(Handler)
@@ -693,17 +680,16 @@ fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
 
 /// The async entry
 async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
+    let database_path = config.data_dir.join("pikadick.sqlite");
+    let database = Database::new(database_path)
+        .await
+        .context("failed to open database")?;
+
     // TODO: See if it is possible to start serenity without a network
     info!("setting up client...");
     let mut client = setup_client(config.clone())
         .await
         .context("failed to set up client")?;
-
-    info!("opening database...");
-    let database_path = config.data_dir.join("pikadick.sqlite");
-    let database = Database::new(database_path)
-        .await
-        .context("failed to open database")?;
 
     let client_data = ClientData::init(client.shard_manager.clone(), config, database.clone())
         .await

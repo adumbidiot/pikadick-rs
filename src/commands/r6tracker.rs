@@ -1,5 +1,4 @@
 use crate::{
-    ClientDataKey,
     PoiseContext,
     PoiseError,
 };
@@ -167,36 +166,27 @@ impl Stats {
 }
 
 #[derive(Debug)]
-struct InnerR6TrackerClient {
+pub struct R6TrackerClient {
     client: r6tracker::Client,
 
     /// The value is `None` if the user could not be found.
     cache: AsyncTimedLruCache<String, Result<Option<Arc<Stats>>, ArcAnyhowError>>,
 }
 
-#[derive(Clone, Debug)]
-pub struct R6TrackerClient {
-    inner: Arc<InnerR6TrackerClient>,
-}
-
 impl R6TrackerClient {
     /// Make a new r6 client with caching.
     pub fn new() -> Self {
         R6TrackerClient {
-            inner: Arc::new(InnerR6TrackerClient {
-                client: Default::default(),
-                cache: AsyncTimedLruCache::new(100, FIVE_MINUTES),
-            }),
+            client: Default::default(),
+            cache: AsyncTimedLruCache::new(100, FIVE_MINUTES),
         }
     }
 
     /// Get R6Tracker stats for a user.
     pub async fn get_stats(&self, query: &str) -> Result<Option<Arc<Stats>>, ArcAnyhowError> {
-        self.inner
-            .cache
+        self.cache
             .get(query.to_string(), || async {
-                self.inner
-                    .client
+                self.client
                     .get_profile(query, r6tracker::Platform::Pc)
                     .await
                     .and_then(|profile_response| match profile_response.into_result() {
@@ -226,17 +216,12 @@ pub async fn r6tracker(
     ctx: PoiseContext<'_>,
     #[description = "The name of the user"] name: String,
 ) -> Result<(), PoiseError> {
-    let data_lock = ctx.serenity_context().data.read().await;
-    let client_data = data_lock
-        .get::<ClientDataKey>()
-        .expect("failed to get client data");
-    let client = client_data.r6tracker_client.clone();
-    drop(data_lock);
-
     info!("Getting r6 stats for \"{name}\" using R6Tracker");
 
     ctx.defer().await?;
-    let result = client
+    let result = ctx
+        .data()
+        .r6tracker_client
         .get_stats(&name)
         .await
         .with_context(|| format!("failed to get r6tracker stats for \"{name}\""));

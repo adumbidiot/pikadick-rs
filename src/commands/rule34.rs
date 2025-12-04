@@ -1,5 +1,4 @@
 use crate::{
-    ClientDataKey,
     PoiseContext,
     PoiseError,
 };
@@ -18,16 +17,11 @@ use tracing::{
 
 const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
 
+/// A caching rule34 client
 #[derive(Debug)]
-struct InnerRule34Client {
+pub struct Rule34Client {
     client: rule34::Client,
     cache: AsyncTimedLruCache<Option<String>, Result<Arc<rule34::PostList>, ArcAnyhowError>>,
-}
-
-/// A caching rule34 client
-#[derive(Clone, Debug)]
-pub struct Rule34Client {
-    inner: Arc<InnerRule34Client>,
 }
 
 impl Rule34Client {
@@ -38,9 +32,7 @@ impl Rule34Client {
 
         let cache = AsyncTimedLruCache::new(100, FIVE_MINUTES);
 
-        Rule34Client {
-            inner: Arc::new(InnerRule34Client { client, cache }),
-        }
+        Rule34Client { client, cache }
     }
 
     /// Search for a query.
@@ -49,11 +41,9 @@ impl Rule34Client {
         &self,
         query: Option<String>,
     ) -> Result<Arc<rule34::PostList>, ArcAnyhowError> {
-        self.inner
-            .cache
+        self.cache
             .get(query.clone(), || async move {
-                self.inner
-                    .client
+                self.client
                     .list_posts()
                     .tags(query.as_deref())
                     .limit(Some(1_000))
@@ -77,19 +67,14 @@ pub async fn rule34(
     #[description = "The rule34.xxx search query. Supports the same syntax as the website."]
     query: Option<String>,
 ) -> Result<(), PoiseError> {
-    let data_lock = ctx.serenity_context().data.read().await;
-    let client_data = data_lock
-        .get::<ClientDataKey>()
-        .expect("missing client data");
-    let client = client_data.rule34_client.clone();
-    drop(data_lock);
-
     let query_format = query
         .as_deref()
         .map(|query| format!("{query:?}"))
         .unwrap_or_else(|| String::from("None"));
     info!("searching rule34 for {query_format}");
-    let result = client
+    let result = ctx
+        .data()
+        .rule34_client
         .list(query.clone())
         .await
         .context("failed to get search results");

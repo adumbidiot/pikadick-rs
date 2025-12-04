@@ -1,5 +1,4 @@
 use crate::{
-    ClientDataKey,
     PoiseContext,
     PoiseError,
 };
@@ -18,15 +17,12 @@ pub async fn yodaspeak(
     ctx: PoiseContext<'_>,
     #[description = "The message to translate"] message: String,
 ) -> Result<(), PoiseError> {
-    let data_lock = ctx.serenity_context().data.read().await;
-    let client_data = data_lock.get::<ClientDataKey>().unwrap();
-    let client = client_data.yodaspeak.clone();
-    drop(data_lock);
-
     info!("Translating {message:?} to yodaspeak");
     ctx.defer().await?;
 
-    let result = client
+    let result = ctx
+        .data()
+        .yodaspeak_client
         .translate(message.as_str())
         .await
         .context("failed to translate");
