@@ -531,64 +531,6 @@ fn setup(cli_options: CliOptions) -> anyhow::Result<SetupData> {
     })
 }
 
-/// The main entry.
-///
-/// Sets up the program and calls `real_main`.
-/// This allows more things to drop correctly.
-/// This also calls setup operations like loading config and setting up the tokio runtime,
-/// logging errors to the stderr instead of the loggers, which are not initialized yet.
-fn main() -> anyhow::Result<()> {
-    // This line MUST run first.
-    // It is needed to exit early if the options are invalid,
-    // and this will NOT run destructors if it does so.
-    let cli_options = argh::from_env();
-
-    // Safety:
-    // 1. SQLite has not been called yet.
-    // 2. The logging callback does not invoke SQLite.
-    // 3. The logging callback is threadsafe.
-    unsafe {
-        nd_async_rusqlite::rusqlite::trace::config_log(Some(rusqlite_log_handler))
-            .context("failed to install sqlite log handler")?;
-    }
-
-    let setup_data = setup(cli_options)?;
-    real_main(setup_data)?;
-    Ok(())
-}
-
-/// The actual entry point
-fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
-    // We spawn this is a seperate thread/task as the main thread does not have enough stack space
-    let _enter_guard = setup_data.tokio_rt.enter();
-    let ret = setup_data
-        .tokio_rt
-        .block_on(tokio::spawn(async_main(setup_data.config)));
-
-    let shutdown_start = Instant::now();
-    info!(
-        "shutting down tokio runtime (shutdown timeout is {:?})...",
-        TOKIO_RT_SHUTDOWN_TIMEOUT
-    );
-    setup_data
-        .tokio_rt
-        .shutdown_timeout(TOKIO_RT_SHUTDOWN_TIMEOUT);
-    info!("shutdown tokio runtime in {:?}", shutdown_start.elapsed());
-
-    info!("unlocking lockfile...");
-    setup_data
-        .lock_file
-        .blocking_unlock()
-        .context("failed to unlock lockfile")?;
-
-    info!("successful shutdown");
-
-    // Logging no longer reliable past this point
-    drop(setup_data.worker_guard);
-
-    ret?
-}
-
 /// The async entry
 async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
     let database_path = config.data_dir.join("pikadick.sqlite");
@@ -630,6 +572,65 @@ async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
 
     info!("closing database...");
     database.close().await.context("failed to close database")?;
+
+    Ok(())
+}
+
+/// The actual entry point
+fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
+    // We spawn this is a seperate thread/task as the main thread does not have enough stack space
+    let _enter_guard = setup_data.tokio_rt.enter();
+    let ret = setup_data
+        .tokio_rt
+        .block_on(tokio::spawn(async_main(setup_data.config)));
+
+    let shutdown_start = Instant::now();
+    info!(
+        "shutting down tokio runtime (shutdown timeout is {:?})...",
+        TOKIO_RT_SHUTDOWN_TIMEOUT
+    );
+    setup_data
+        .tokio_rt
+        .shutdown_timeout(TOKIO_RT_SHUTDOWN_TIMEOUT);
+    info!("shutdown tokio runtime in {:?}", shutdown_start.elapsed());
+
+    info!("unlocking lockfile...");
+    setup_data
+        .lock_file
+        .blocking_unlock()
+        .context("failed to unlock lockfile")?;
+
+    info!("successful shutdown");
+
+    // Logging no longer reliable past this point
+    drop(setup_data.worker_guard);
+
+    ret?
+}
+
+/// The main entry.
+///
+/// Sets up the program and calls `real_main`.
+/// This allows more things to drop correctly.
+/// This also calls setup operations like loading config and setting up the tokio runtime,
+/// logging errors to the stderr instead of the loggers, which are not initialized yet.
+fn main() -> anyhow::Result<()> {
+    // This line MUST run first.
+    // It is needed to exit early if the options are invalid,
+    // and this will NOT run destructors if it does so.
+    let cli_options = argh::from_env();
+
+    // Safety:
+    // 1. SQLite has not been called yet.
+    // 2. The logging callback does not invoke SQLite.
+    // 3. The logging callback is threadsafe.
+    unsafe {
+        nd_async_rusqlite::rusqlite::trace::config_log(Some(rusqlite_log_handler))
+            .context("failed to install sqlite log handler")?;
+    }
+
+    let setup_data = setup(cli_options)?;
+    real_main(setup_data)?;
 
     Ok(())
 }
