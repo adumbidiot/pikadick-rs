@@ -49,6 +49,7 @@ pub struct Config {
     pub deviantart: DeviantArtConfig,
 
     /// SauceNao config
+    #[serde(rename = "sauce-nao")]
     pub sauce_nao: SauceNaoConfig,
 
     /// Rule34 config
