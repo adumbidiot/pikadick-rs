@@ -1,4 +1,3 @@
-pub mod cache_stats;
 pub mod cmd;
 pub mod deviantart;
 pub mod help;
@@ -28,7 +27,6 @@ pub mod yodaspeak;
 pub mod zalgo;
 
 pub use self::{
-    cache_stats::CACHE_STATS_COMMAND,
     cmd::CMD_COMMAND,
     deviantart::DEVIANTART_COMMAND,
     help::help,

@@ -1,10 +1,6 @@
 use crate::{
     ClientDataKey,
     checks::ENABLED_CHECK,
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
     util::TimedCache,
 };
 use rand::prelude::IndexedRandom;
@@ -85,46 +81,6 @@ impl ShiftClient {
             .cache
             .get_if_fresh(&game)
             .and_then(|entry| entry.data().choose(&mut rand::thread_rng()).cloned()))
-    }
-}
-
-impl CacheStatsProvider for ShiftClient {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat(
-            "shift",
-            "bl_cache",
-            self.cache
-                .get_if_fresh(&Game::Borderlands)
-                .map(|el| el.data().len())
-                .unwrap_or(0) as f32,
-        );
-
-        cache_stats_builder.publish_stat(
-            "shift",
-            "bl2_cache",
-            self.cache
-                .get_if_fresh(&Game::Borderlands2)
-                .map(|el| el.data().len())
-                .unwrap_or(0) as f32,
-        );
-
-        cache_stats_builder.publish_stat(
-            "shift",
-            "blps_cache",
-            self.cache
-                .get_if_fresh(&Game::BorderlandsPreSequel)
-                .map(|el| el.data().len())
-                .unwrap_or(0) as f32,
-        );
-
-        cache_stats_builder.publish_stat(
-            "shift",
-            "bl3_cache",
-            self.cache
-                .get_if_fresh(&Game::Borderlands3)
-                .map(|el| el.data().len())
-                .unwrap_or(0) as f32,
-        );
     }
 }
 

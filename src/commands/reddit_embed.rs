@@ -4,10 +4,6 @@ use crate::{
         ADMIN_CHECK,
         ENABLED_CHECK,
     },
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
     util::{
         LoadingReaction,
         TimedCache,
@@ -301,25 +297,6 @@ impl RedditEmbedData {
             }
             _ => Ok(link.url.clone().into()),
         }
-    }
-}
-
-impl CacheStatsProvider for RedditEmbedData {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat("reddit_embed", "link_cache", self.cache.len() as f32);
-        cache_stats_builder.publish_stat(
-            "reddit_embed",
-            "video_data_cache",
-            self.video_data_cache.len() as f32,
-        );
-        cache_stats_builder.publish_stat(
-            "reddit_embed",
-            "random_post_cache",
-            self.random_post_cache
-                .iter()
-                .map(|v| v.value().1.len())
-                .sum::<usize>() as f32,
-        );
     }
 }
 

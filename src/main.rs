@@ -315,7 +315,6 @@ impl TypeMapKey for ClientDataKey {
     cmd,
     latency,
     uwuify,
-    cache_stats,
     insta_dl,
     deviantart,
     urban,

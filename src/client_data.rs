@@ -21,48 +21,10 @@ use crate::{
 use anyhow::Context;
 use serenity::gateway::ShardManager;
 use std::{
-    collections::BTreeMap,
     fmt::Debug,
     sync::Arc,
 };
 use tracing::error;
-
-/// A tool to build cache stats
-#[derive(Debug)]
-pub struct CacheStatsBuilder {
-    stats: BTreeMap<&'static str, BTreeMap<&'static str, f32>>,
-}
-
-impl CacheStatsBuilder {
-    /// Make a new [`CacheStatsBuilder`].
-    pub fn new() -> Self {
-        Self {
-            stats: BTreeMap::new(),
-        }
-    }
-
-    /// Publish a stat to a section
-    pub fn publish_stat(&mut self, section: &'static str, name: &'static str, value: f32) {
-        self.stats.entry(section).or_default().insert(name, value);
-    }
-
-    /// Get the inner stats
-    pub fn into_inner(self) -> BTreeMap<&'static str, BTreeMap<&'static str, f32>> {
-        self.stats
-    }
-}
-
-impl Default for CacheStatsBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// A type that can provide cache stats
-pub trait CacheStatsProvider {
-    /// Publish stats to the provided [`CacheStatsBuilder`].
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder);
-}
 
 /// The [`ClientData`].
 #[derive(Debug)]
@@ -160,34 +122,13 @@ impl ClientData {
         })
     }
 
-    /// Generate cache stats
-    /// Currently, In order for something to show up in cache-stats it must be added here.
-    /// More automation is desirable in the future.
-    pub fn generate_cache_stats(&self) -> BTreeMap<&'static str, BTreeMap<&'static str, f32>> {
-        let mut stat_builder = CacheStatsBuilder::new();
-
-        let cache_stat_providers: &[&dyn CacheStatsProvider] = &[
-            &self.reddit_embed_data,
-            &self.shift_client,
-            &self.deviantart_client,
-            &self.urban_client,
-            &self.iqdb_client,
-        ];
-
-        for cache_stat_provider in cache_stat_providers {
-            cache_stat_provider.publish_cache_stats(&mut stat_builder);
-        }
-
-        stat_builder.into_inner()
-    }
-
     /// Shutdown anything that needs to be shut down.
     ///
     /// Errors are logged to the console,
     /// but not returned to the user as it is assumed that they don't matter in the middle of a shutdown.
     pub async fn shutdown(&self) {
-        if let Err(e) = self.encoder_task.shutdown().await {
-            error!("{:?}", e);
+        if let Err(error) = self.encoder_task.shutdown().await {
+            error!("{error:?}");
         }
     }
 }

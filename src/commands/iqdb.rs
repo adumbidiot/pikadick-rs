@@ -1,10 +1,6 @@
 use crate::{
     ClientDataKey,
     checks::ENABLED_CHECK,
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
     util::{
         LoadingReaction,
         TimedCache,
@@ -69,12 +65,6 @@ impl IqdbClient {
 impl Default for IqdbClient {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl CacheStatsProvider for IqdbClient {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat("iqdb", "search_cache", self.search_cache.len() as f32);
     }
 }
 

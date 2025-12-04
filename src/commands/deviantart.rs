@@ -2,10 +2,6 @@ use crate::{
     ClientDataKey,
     Database,
     checks::ENABLED_CHECK,
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
     util::{
         LoadingReaction,
         TimedCache,
@@ -132,16 +128,6 @@ impl DeviantartClient {
         info!("searched deviantart in {:?}", start.elapsed());
 
         Ok(ret)
-    }
-}
-
-impl CacheStatsProvider for DeviantartClient {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat(
-            "deviantart",
-            "search_cache",
-            self.search_cache.len() as f32,
-        );
     }
 }
 

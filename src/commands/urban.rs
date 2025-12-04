@@ -1,10 +1,6 @@
 use crate::{
     ClientDataKey,
     checks::ENABLED_CHECK,
-    client_data::{
-        CacheStatsBuilder,
-        CacheStatsProvider,
-    },
     util::{
         LoadingReaction,
         TimedCache,
@@ -64,12 +60,6 @@ impl UrbanClient {
             .search_cache
             .get_if_fresh(query)
             .expect("recently acquired entry expired"))
-    }
-}
-
-impl CacheStatsProvider for UrbanClient {
-    fn publish_cache_stats(&self, cache_stats_builder: &mut CacheStatsBuilder) {
-        cache_stats_builder.publish_stat("urban", "search_cache", self.search_cache.len() as f32);
     }
 }
 
