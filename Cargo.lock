@@ -3113,7 +3113,6 @@ dependencies = [
  "nd-async-rusqlite",
  "nd-util",
  "nekos",
- "once_cell",
  "openssl",
  "parking_lot",
  "pikadick-system-info",

@@ -3,7 +3,7 @@ use crate::{
     PoiseError,
 };
 use anyhow::Context as _;
-use bewu_util::AsyncTimedCacheCell;
+use bewu_util::AsyncTimedLruCache;
 use nd_util::ArcAnyhowError;
 use rand::prelude::IndexedRandom;
 use std::{
@@ -17,46 +17,29 @@ use url::Url;
 const NUM_IMAGES: u8 = 100;
 const ONE_MINUTE: Duration = Duration::from_secs(60);
 
-#[derive(Debug)]
-struct NekosClientInner {
-    client: nekos::Client,
-
-    cache: AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>,
-    nsfw_cache: AsyncTimedCacheCell<Result<Arc<[Url]>, ArcAnyhowError>>,
-}
-
 /// The nekos client
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct NekosClient {
-    inner: Arc<NekosClientInner>,
+    client: nekos::Client,
+    cache: AsyncTimedLruCache<Option<bool>, Result<Arc<[Url]>, ArcAnyhowError>>,
 }
 
 impl NekosClient {
     /// Make a new nekos client
     pub fn new() -> Self {
         NekosClient {
-            inner: Arc::new(NekosClientInner {
-                client: Default::default(),
-
-                cache: AsyncTimedCacheCell::new(ONE_MINUTE),
-                nsfw_cache: AsyncTimedCacheCell::new(ONE_MINUTE),
-            }),
+            client: Default::default(),
+            cache: AsyncTimedLruCache::new(3, ONE_MINUTE),
         }
     }
 
     /// Get a random neko url
-    pub async fn get_random(&self, nsfw: bool) -> anyhow::Result<Url> {
-        let cache = if nsfw {
-            &self.inner.nsfw_cache
-        } else {
-            &self.inner.cache
-        };
-
-        let urls = cache
-            .get(|| async {
-                self.inner
-                    .client
-                    .get_random(Some(nsfw), NUM_IMAGES)
+    pub async fn get_random(&self, nsfw: Option<bool>) -> anyhow::Result<Url> {
+        let urls = self
+            .cache
+            .get(nsfw, || async {
+                self.client
+                    .get_random(nsfw, NUM_IMAGES)
                     .await
                     .context("failed to get nekos")
                     .map(|image_list| {
@@ -95,10 +78,9 @@ impl Default for NekosClient {
 )]
 pub async fn nekos(
     ctx: PoiseContext<'_>,
-    #[description = "Whether this should use nsfw results"] nsfw: Option<bool>,
+    #[description = "Whether this should use nsfw results. Not specifying includes both."]
+    nsfw: Option<bool>,
 ) -> Result<(), PoiseError> {
-    let nsfw = nsfw.unwrap_or(false);
-
     ctx.defer().await?;
     let content = match ctx.data().nekos_client.get_random(nsfw).await {
         Ok(url) => url.into(),

@@ -1,7 +1,9 @@
 use anyhow::Context;
-use once_cell::sync::Lazy;
 use std::{
-    sync::Arc,
+    sync::{
+        Arc,
+        LazyLock,
+    },
     time::Instant,
 };
 use tiny_skia::{
@@ -17,10 +19,12 @@ use tokio::sync::Semaphore;
 use tracing::info;
 use ttf_parser::OutlineBuilder;
 
-const FONT_BYTES: &[u8] =
-    include_bytes!("../../../assets/Averia_Serif_Libre/AveriaSerifLibre-Light.ttf");
-static FONT_FACE: Lazy<ttf_parser::Face<'static>> =
-    Lazy::new(|| ttf_parser::Face::parse(FONT_BYTES, 0).expect("failed to load `FONT_BYTES`"));
+const FONT_BYTES: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/Averia_Serif_Libre/AveriaSerifLibre-Light.ttf"
+));
+static FONT_FACE: LazyLock<ttf_parser::Face<'static>> =
+    LazyLock::new(|| ttf_parser::Face::parse(FONT_BYTES, 0).expect("failed to load `FONT_BYTES`"));
 
 const RENDERED_SIZE: u16 = 300;
 const SQUARE_SIZE: u16 = RENDERED_SIZE / 3;
@@ -71,14 +75,14 @@ impl Renderer {
         for i in b'0'..=b'9' {
             let glyph_id = FONT_FACE
                 .glyph_index(char::from(i))
-                .with_context(|| format!("missing glyph for '{}'", char::from(i)))?;
+                .with_context(|| format!("missing glyph for \"{}\"", char::from(i)))?;
 
             let mut builder = SkiaBuilder::new();
             let _bb = FONT_FACE
                 .outline_glyph(glyph_id, &mut builder)
-                .with_context(|| format!("missing glyph bounds for '{}'", char::from(i)))?;
+                .with_context(|| format!("missing glyph bounds for \"{}\"", char::from(i)))?;
             let path = builder.into_path().with_context(|| {
-                format!("failed to generate glyph path for '{}'", char::from(i))
+                format!("failed to generate glyph path for \"{}\"", char::from(i))
             })?;
 
             number_paths.push(path);

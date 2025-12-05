@@ -10,9 +10,14 @@ use rusqlite::{
 };
 use serenity::model::prelude::*;
 
-// Tiktok Embed SQL
-const GET_TIKTOK_EMBED_FLAGS_SQL: &str = include_str!("../../sql/get_tiktok_embed_flags.sql");
-const SET_TIKTOK_EMBED_FLAGS_SQL: &str = include_str!("../../sql/set_tiktok_embed_flags.sql");
+const GET_TIKTOK_EMBED_FLAGS_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/get_tiktok_embed_flags.sql"
+));
+const SET_TIKTOK_EMBED_FLAGS_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/set_tiktok_embed_flags.sql"
+));
 
 impl Database {
     /// Set the flags for tiktok embeds.
