@@ -102,7 +102,7 @@ pub fn uwuify_str(input: &str) -> String {
                     // it might make sense to add a feature that does that here
                 }
 
-                let face = FACES.choose(&mut rand::thread_rng()).expect("missing face");
+                let face = FACES.choose(&mut rand::rng()).expect("missing face");
                 output.reserve(face.len() + 2);
 
                 output.push(' ');

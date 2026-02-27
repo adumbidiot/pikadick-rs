@@ -240,7 +240,7 @@ impl RedditEmbedData {
                 if entry.0.elapsed() > Duration::from_secs(10 * 60) {
                     return None;
                 }
-                entry.1.choose(&mut rand::thread_rng()).cloned()
+                entry.1.choose(&mut rand::rng()).cloned()
             }) {
                 let url = self.reddit_link_to_embed_url(&link).await?;
                 return Ok(Some(url));
@@ -269,7 +269,7 @@ impl RedditEmbedData {
                 .map(|link| Arc::new(*link))
                 .collect();
 
-            let maybe_link = posts.choose(&mut rand::thread_rng()).cloned();
+            let maybe_link = posts.choose(&mut rand::rng()).cloned();
             if let Some(link) = maybe_link {
                 maybe_url = Some(self.reddit_link_to_embed_url(&link).await?);
             }

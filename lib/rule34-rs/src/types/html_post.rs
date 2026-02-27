@@ -174,11 +174,7 @@ impl HtmlPost {
                                     .query_pairs()
                                     .find_map(
                                         |(key, value)| {
-                                            if key == "uname" {
-                                                Some(value)
-                                            } else {
-                                                None
-                                            }
+                                            if key == "uname" { Some(value) } else { None }
                                         },
                                     )?
                                     .into();

@@ -11,25 +11,25 @@ required-features = [ "cli" ]
 
 [dependencies]
 lazy_static = "1.5.0"
-reqwest = { version = "0.12.24", default-features = false, features = [ "multipart", "stream" ] }
-scraper = { version = "0.24.0", default-features = false }
-thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = [ "fs", "rt" ] }
-tokio-util = { version = "0.7.17", features = ["codec"] }
-url = "2.5.7"
+reqwest = { version = "0.13.2", default-features = false, features = [ "multipart", "stream" ] }
+scraper = { version = "0.25.0", default-features = false }
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = [ "fs", "rt" ] }
+tokio-util = { version = "0.7.18", features = ["codec"] }
+url = "2.5.8"
 
 # Optional
-anyhow = { version = "1.0.100", optional = true }
-argh = { version = "0.1.13", optional = true }
+anyhow = { version = "1.0.102", optional = true }
+argh = { version = "0.1.14", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.48.0", features = [ "macros" ] }
+tokio = { version = "1.49.0", features = [ "macros" ] }
 
 [features]
 default = [ "reqwest/default-tls" ]
 
 native-tls = [ "reqwest/native-tls" ]
-rustls-tls = [ "reqwest/rustls-tls" ]
+rustls = [ "reqwest/rustls" ]
 
 cli = [
     "anyhow",

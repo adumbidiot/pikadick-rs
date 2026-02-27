@@ -63,7 +63,7 @@ impl ShiftClient {
         game: Game,
     ) -> Result<Option<Arc<ShiftCode>>, shift_orcz::OrczError> {
         if let Some(entry) = self.cache.get_if_fresh(&game) {
-            return Ok(entry.data().choose(&mut rand::thread_rng()).cloned());
+            return Ok(entry.data().choose(&mut rand::rng()).cloned());
         }
 
         let codes = self
@@ -80,7 +80,7 @@ impl ShiftClient {
         Ok(self
             .cache
             .get_if_fresh(&game)
-            .and_then(|entry| entry.data().choose(&mut rand::thread_rng()).cloned()))
+            .and_then(|entry| entry.data().choose(&mut rand::rng()).cloned()))
     }
 }
 

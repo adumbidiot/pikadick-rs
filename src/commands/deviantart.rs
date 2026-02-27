@@ -173,7 +173,7 @@ async fn deviantart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                         Some(
                             deviation
                                 .get_image_download_url()
-                                .or_else(|| deviation.get_fullview_url()),
+                                .or_else(|| deviation.get_fullview_url(Default::default()).ok()),
                         )
                     } else if deviation.is_film() {
                         Some(deviation.get_best_video_url().cloned())
@@ -181,7 +181,7 @@ async fn deviantart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                         None
                     }
                 })
-                .choose(&mut rand::thread_rng());
+                .choose(&mut rand::rng());
 
             if let Some(choice) = choice {
                 if let Some(url) = choice {

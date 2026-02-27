@@ -30,7 +30,9 @@ use std::{
 use url::Url;
 
 // Default Header values
-static USER_AGENT_VALUE: HeaderValue = HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4514.0 Safari/537.36");
+static USER_AGENT_VALUE: HeaderValue = HeaderValue::from_static(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4514.0 Safari/537.36",
+);
 static REFERER_VALUE: HeaderValue = HeaderValue::from_static("https://rule34.xxx/");
 static ACCEPT_LANGUAGE_VALUE: HeaderValue = HeaderValue::from_static("en,en-US;q=0,5");
 static ACCEPT_VALUE: HeaderValue = HeaderValue::from_static("*/*");

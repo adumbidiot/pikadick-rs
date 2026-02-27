@@ -2,7 +2,7 @@
 name = "rule34"
 version = "0.0.0"
 authors = [ "ProfessionalProgrammers <rusty.bois.bios.rusty@gmail.com>" ]
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
@@ -11,27 +11,27 @@ required-features = [ "cli" ]
 path = "src/cli/main.rs"
 
 [dependencies]
-itoa = "1.0.15"
-quick-xml = { version = "0.38.4", features = [ "serialize" ] }
-reqwest = { version = "0.12.24", default-features = false, features = [ "json", "brotli" ] }
+itoa = "1.0.17"
+quick-xml = { version = "0.39.2", features = [ "serialize" ] }
+reqwest = { version = "0.13.2", default-features = false, features = [ "json", "brotli" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
-thiserror = "2.0.17"
-time = { version = "0.3.44", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
-tokio = "1.48.0"
-url = { version = "2.5.7", features = [ "serde" ] }
-serde_json = "1.0.145"
+thiserror = "2.0.18"
+time = { version = "0.3.47", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
+tokio = "1.49.0"
+url = { version = "2.5.8", features = [ "serde" ] }
+serde_json = "1.0.149"
 
 # scrape
 once_cell = { version = "1.21.3", features = [ "std" ], default-features = false, optional = true }
-scraper = { version = "0.24.0", default-features = false, optional = true }
+scraper = { version = "0.25.0", default-features = false, optional = true }
 
 # cli
-argh = { version = "0.1.13", optional = true }
-anyhow = { version = "1.0.100", optional = true }
+argh = { version = "0.1.14", optional = true }
+anyhow = { version = "1.0.102", optional = true }
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", features = [ "download-to-path" ], optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.48.0", features = [ "macros", "rt-multi-thread" ] }
+tokio = { version = "1.49.0", features = [ "macros", "rt-multi-thread" ] }
 serde_path_to_error = "0.1.20"
 
 [features]
@@ -46,7 +46,7 @@ default-tls = ["reqwest/default-tls"]
 native-tls = ["reqwest/native-tls"]
 
 # Use rustls for TLS
-rustls-tls = ["reqwest/rustls-tls"]
+rustls = ["reqwest/rustls"]
 
 # Whether to include API functions that use scraping.
 # Omitting this feature reduces the number of dependencies.

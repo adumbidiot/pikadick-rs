@@ -83,7 +83,7 @@ pub async fn rule34(
         Ok(list_results) => {
             let maybe_list_result: Option<String> = list_results
                 .posts
-                .choose(&mut rand::thread_rng())
+                .choose(&mut rand::rng())
                 .map(|list_result| list_result.file_url.to_string());
 
             if let Some(file_url) = maybe_list_result {
