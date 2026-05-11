@@ -10,21 +10,21 @@ path = "src/main.rs"
 required-features = [ "cli" ]
 
 [dependencies]
-itoa = "1.0.17"
-reqwest = { version = "0.13.2", default-features = false, features = [ "json" ] }
+itoa = "1.0.18"
+reqwest = { version = "0.13.3", default-features = false, features = [ "json" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.149"
 thiserror = "2.0.18"
-tokio = { version = "1.49.0", features = [ "io-util" ] }
+tokio = { version = "1.52.3", features = [ "io-util" ] }
 url = "2.5.8"
 
 # Optional
-argh = { version = "0.1.14", optional = true }
+argh = { version = "0.1.19", optional = true }
 anyhow = { version = "1.0.102", optional = true }
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", features = [ "download-to-path" ], optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.49.0", features = [ "macros" ] }
+tokio = { version = "1.52.3", features = [ "macros" ] }
 
 [features]
 default = [ "reqwest/rustls" ]
