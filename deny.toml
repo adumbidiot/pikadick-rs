@@ -21,6 +21,12 @@ ignore = [
     
     # Blocked on serenity moving to reqwests 0.13
     "RUSTSEC-2025-0134",
+    
+    # Blocked on serenity
+    "RUSTSEC-2026-0104",
+    "RUSTSEC-2026-0099",
+    "RUSTSEC-2026-0098",
+    "RUSTSEC-2026-0049",
 ]
 
 [licenses]
@@ -74,7 +80,9 @@ license-files = [
 [bans]
 multiple-versions = "warn"
 highlight = "all"
-skip = [    
+skip = [
+    # { name = "windows-sys", version = "0" },
+    
     # Blocked on removing heim
     { name = "nix", version = "0.23.1" },
     { name = "polling", version = "2.8.0" },
@@ -141,7 +149,6 @@ skip = [
     { name = "hashbrown", version = "0.14.5" },
     { name = "getrandom", version = "0.2.16" },
     { name = "derive_more", version = "0.99.20" },
-    { name = "windows-sys", version = "0.60.2" },
     { name = "rand_core", version = "0.6.4" },
     { name = "rand_chacha", version = "0.3.1" },
     { name = "rand", version = "0.8.5" },
@@ -159,6 +166,7 @@ skip = [
     { name = "getrandom", version = "0.3.4" },
     { name = "cpufeatures", version = "0.2.17" },
     { name = "chacha20", version = "0.9.1" },
+    { name = "hashbrown", version = "0.16.1" },
 ]
 
 # Mostly soundness denies since the advisory lacks a section for soundess bugs
