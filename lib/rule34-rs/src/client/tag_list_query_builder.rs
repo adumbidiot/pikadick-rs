@@ -169,6 +169,7 @@ impl<'a> TagListQueryBuilder<'a> {
     /// Execute the query
     pub async fn execute(&self) -> Result<TagList, Error> {
         let url = self.get_url()?;
+        self.client.ratelimit().await;
 
         // We run this on the blocking threadpool out of an abundance of caution.
         // On a 10th gen i7, this runs around 2.5 milliseconds tops in release mode.
