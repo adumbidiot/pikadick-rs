@@ -25,7 +25,10 @@ use std::{
         Arc,
         Mutex,
     },
-    time::Duration,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 use url::Url;
 
@@ -37,10 +40,25 @@ static REFERER_VALUE: HeaderValue = HeaderValue::from_static("https://rule34.xxx
 static ACCEPT_LANGUAGE_VALUE: HeaderValue = HeaderValue::from_static("en,en-US;q=0,5");
 static ACCEPT_VALUE: HeaderValue = HeaderValue::from_static("*/*");
 
+const RATELIMIT_BUDGET: u8 = 60;
+const ONE_MINUTE: Duration = Duration::from_mins(1);
+
 #[derive(Debug)]
 struct AuthState {
     user_id: u64,
     api_key: String,
+}
+
+#[derive(Debug)]
+struct RatelimitState {
+    ratelimit_last_time: Instant,
+    ratelimit_budget: u8,
+}
+
+#[derive(Debug)]
+struct ClientState {
+    auth_state: Mutex<Option<AuthState>>,
+    ratelimit_state: Mutex<RatelimitState>,
 }
 
 /// A Rule34 Client
@@ -51,8 +69,8 @@ pub struct Client {
     /// This probably shouldn't be used by you.
     pub client: reqwest::Client,
 
-    /// The auth state.
-    auth_state: Arc<Mutex<Option<AuthState>>>,
+    /// The client state.
+    state: Arc<ClientState>,
 }
 
 impl Client {
@@ -75,13 +93,20 @@ impl Client {
 
         Client {
             client,
-            auth_state: Arc::new(Mutex::new(None)),
+            state: Arc::new(ClientState {
+                auth_state: std::sync::Mutex::new(None),
+                ratelimit_state: Mutex::new(RatelimitState {
+                    ratelimit_last_time: Instant::now(),
+                    ratelimit_budget: RATELIMIT_BUDGET,
+                }),
+            }),
         }
     }
 
     /// Set the authentication.
     pub fn set_auth(&self, user_id: u64, api_key: &str) {
         let mut auth_state = self
+            .state
             .auth_state
             .lock()
             .unwrap_or_else(|error| error.into_inner());
@@ -94,9 +119,42 @@ impl Client {
 
     /// Get the auth state.
     fn get_auth(&self) -> std::sync::MutexGuard<'_, Option<AuthState>> {
-        self.auth_state
+        self.state
+            .auth_state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+    }
+
+    async fn ratelimit(&self) {
+        loop {
+            let sleep_time = {
+                let mut state = self
+                    .state
+                    .ratelimit_state
+                    .lock()
+                    .unwrap_or_else(|error| error.into_inner());
+                let mut elapsed = state.ratelimit_last_time.elapsed();
+                if elapsed > ONE_MINUTE {
+                    state.ratelimit_last_time = Instant::now();
+                    state.ratelimit_budget = RATELIMIT_BUDGET;
+                    elapsed = Duration::ZERO;
+                }
+
+                if state.ratelimit_budget > 0 {
+                    state.ratelimit_budget -= 1;
+                    None
+                } else {
+                    Some(ONE_MINUTE - elapsed)
+                }
+            };
+
+            match sleep_time {
+                Some(sleep_time) => {
+                    tokio::time::sleep(sleep_time).await;
+                }
+                None => return,
+            }
+        }
     }
 
     /// Send a GET web request to a `url` and get the result as a [`String`].
