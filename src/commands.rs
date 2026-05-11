@@ -35,7 +35,7 @@ pub use self::{
     leave::LEAVE_COMMAND,
     nekos::nekos,
     ping::ping,
-    quizizz::QUIZIZZ_COMMAND,
+    quizizz::quizizz,
     r6tracker::r6tracker,
     reddit::reddit,
     reddit_embed::REDDIT_EMBED_COMMAND,

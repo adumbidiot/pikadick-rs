@@ -180,6 +180,7 @@ impl EventHandler for Handler {
     }
 
     #[tracing::instrument(skip(self, ctx, msg), fields(author = %msg.author.id, guild = ?msg.guild_id, content = %msg.content))]
+    #[expect(clippy::collapsible_match)]
     async fn message(&self, ctx: Context, msg: Message) {
         let data_lock = ctx.data.read().await;
         let client_data = data_lock
@@ -308,7 +309,6 @@ impl TypeMapKey for ClientDataKey {
 #[group]
 #[commands(
     system,
-    quizizz,
     shift,
     reddit_embed,
     cmd,
@@ -350,6 +350,7 @@ async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
             self::commands::nekos(),
             self::commands::ping(),
             self::commands::tiktok_embed(),
+            self::commands::quizizz(),
             self::commands::r6tracker(),
             self::commands::reddit(),
             self::commands::rule34(),

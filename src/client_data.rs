@@ -3,7 +3,6 @@ use crate::{
     commands::{
         deviantart::DeviantartClient,
         iqdb::IqdbClient,
-        quizizz::QuizizzClient,
         reddit_embed::RedditEmbedData,
         sauce_nao::SauceNaoClient,
         shift::ShiftClient,
@@ -28,8 +27,6 @@ pub struct ClientData {
     /// The discord shard_manager
     pub shard_manager: Arc<ShardManager>,
 
-    /// The quizizz client
-    pub quizizz_client: QuizizzClient,
     /// The shift client
     pub shift_client: ShiftClient,
     /// The reddit embed data
@@ -80,7 +77,6 @@ impl ClientData {
         Ok(ClientData {
             shard_manager,
 
-            quizizz_client: Default::default(),
             shift_client: ShiftClient::new(),
             reddit_embed_data: Default::default(),
             enabled_check_data: Default::default(),

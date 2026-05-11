@@ -1,18 +1,8 @@
 use crate::{
-    ClientDataKey,
-    checks::ENABLED_CHECK,
-    util::LoadingReaction,
+    PoiseContext,
+    PoiseError,
 };
 use anyhow::Context as _;
-use serenity::{
-    framework::standard::{
-        Args,
-        CommandResult,
-        macros::command,
-    },
-    model::prelude::*,
-    prelude::*,
-};
 use std::{
     collections::BinaryHeap,
     sync::Arc,
@@ -33,12 +23,70 @@ use tracing::{
     info,
 };
 
-pub type SearchResult = Result<Option<String>, Arc<anyhow::Error>>;
+type SearchResult = Result<Option<String>, Arc<anyhow::Error>>;
 
 const MAX_TRIES: usize = 1_000;
 const MAX_CODE: u32 = 999_999;
+const CODE_VALID_TIME: Duration = Duration::from_secs(10 * 60);
 
 const LIMIT_REACHED_MSG: &str = "Reached limit while searching for quizizz code, quitting...";
+
+/// A Cache for quizzizz codes
+#[derive(Debug)]
+pub struct CodeCache {
+    cache: BinaryHeap<(std::cmp::Reverse<Instant>, String)>,
+}
+
+impl CodeCache {
+    /// Make a new cache
+    pub fn new() -> Self {
+        // Worst case caches `MAX_TRIES - 1` entries, since we gather MAX_TRIES entries and return one on success.
+        Self {
+            cache: BinaryHeap::with_capacity(MAX_TRIES),
+        }
+    }
+
+    /// Get the # of entries
+    pub fn len(&self) -> usize {
+        self.cache.len()
+    }
+
+    /// Returns true if it is empty
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+
+    /// Trim the cache
+    pub fn trim(&mut self) {
+        while let Some((time, _)) = self.cache.peek() {
+            if time.0.elapsed() > CODE_VALID_TIME {
+                self.cache.pop();
+            } else {
+                // The newest value has not expired.
+                // Exit the peek loop.
+                break;
+            }
+        }
+    }
+
+    /// Trim the cache and pop a code if it exists
+    pub fn trim_pop(&mut self) -> Option<String> {
+        self.trim();
+        Some(self.cache.pop()?.1)
+    }
+
+    /// Add a code to the cache
+    pub fn push(&mut self, code_str: String) {
+        self.cache
+            .push((std::cmp::Reverse(Instant::now()), code_str));
+    }
+}
+
+impl Default for CodeCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct QuizizzClient {
@@ -101,63 +149,6 @@ impl Default for QuizizzClient {
     }
 }
 
-/// A Cache for quizzizz codes
-#[derive(Debug)]
-pub struct CodeCache {
-    cache: BinaryHeap<(std::cmp::Reverse<Instant>, String)>,
-}
-
-impl CodeCache {
-    /// Make a new cache
-    pub fn new() -> Self {
-        // Worst case caches `MAX_TRIES - 1` entries, since we gather MAX_TRIES entries and return one on success.
-        Self {
-            cache: BinaryHeap::with_capacity(MAX_TRIES),
-        }
-    }
-
-    /// Get the # of entries
-    pub fn len(&self) -> usize {
-        self.cache.len()
-    }
-
-    /// Returns true if it is empty
-    pub fn is_empty(&self) -> bool {
-        self.cache.is_empty()
-    }
-
-    /// Trim the cache
-    pub fn trim(&mut self) {
-        while let Some((time, _)) = self.cache.peek() {
-            if time.0.elapsed() > Duration::from_secs(10 * 60) {
-                self.cache.pop();
-            } else {
-                // The newest value has not expired.
-                // Exit the peek loop.
-                break;
-            }
-        }
-    }
-
-    /// Trim the cache and pop a code if it exists
-    pub fn trim_pop(&mut self) -> Option<String> {
-        self.trim();
-        Some(self.cache.pop()?.1)
-    }
-
-    /// Add a code to the cache
-    pub fn push(&mut self, code_str: String) {
-        self.cache
-            .push((std::cmp::Reverse(Instant::now()), code_str));
-    }
-}
-
-impl Default for CodeCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 async fn finder_task(watch_tx: WatchSender<SearchResult>, wakeup: Arc<Notify>) {
     let client = quizizz::Client::new();
     let mut cache = CodeCache::new();
@@ -179,7 +170,7 @@ async fn finder_task(watch_tx: WatchSender<SearchResult>, wakeup: Arc<Notify>) {
         // Spawn parallel guesses
         let (tx, mut rx) = tokio::sync::mpsc::channel(MAX_TRIES);
         for _ in 0..MAX_TRIES {
-            let code_str = format!("{:06}", code);
+            let code_str = format!("{code:06}");
             code = code.wrapping_add(1);
 
             let client = client.clone();
@@ -219,15 +210,15 @@ async fn finder_task(watch_tx: WatchSender<SearchResult>, wakeup: Arc<Notify>) {
                     // Pass
                     // the room was not found / the player needs to be logged in to access this game
                 }
-                Err(e) => {
-                    let e = Err(e)
+                Err(error) => {
+                    let error = Err(error)
                         .with_context(|| {
-                            format!("failed to search for quizizz code '{}'", code_str)
+                            format!("failed to search for quizizz code \"{code_str}\"")
                         })
                         .map_err(Arc::new);
-                    error!("{:?}", e);
+                    error!("{error:?}");
                     if !sent_response {
-                        let _ = watch_tx.send(e).is_ok();
+                        let _ = watch_tx.send(error).is_ok();
                         sent_response = true;
                     }
                 }
@@ -241,35 +232,30 @@ async fn finder_task(watch_tx: WatchSender<SearchResult>, wakeup: Arc<Notify>) {
     }
 }
 
-#[command]
-#[description("Locate a quizizz code")]
-#[bucket("quizizz")]
-#[checks(Enabled)]
-async fn quizizz(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-    let data_lock = ctx.data.read().await;
-    let client_data = data_lock
-        .get::<ClientDataKey>()
-        .expect("failed to get client data");
-    let client = client_data.quizizz_client.clone();
-    drop(data_lock);
+#[poise::command(
+    slash_command,
+    description_localized("en-US", "Locate a quizizz code"),
+    check = "crate::checks::enabled"
+)]
+pub async fn quizizz(ctx: PoiseContext<'_>) -> Result<(), PoiseError> {
+    ctx.defer().await?;
 
-    let mut loading = LoadingReaction::new(ctx.http.clone(), msg);
+    let result = ctx.data().quizizz_client.search_for_code().await;
 
-    match client.search_for_code().await {
+    match result {
         Ok(Some(code_str)) => {
-            info!("located quizizz code '{}'", code_str);
-            loading.send_ok();
-            msg.channel_id
-                .say(&ctx.http, format!("Located quizizz code: {}", code_str))
+            info!("located quizizz code \"{code_str}\"");
+
+            ctx.reply(format!("Located quizizz code: {code_str}"))
                 .await?;
         }
         Ok(None) => {
             info!("quizziz finder reached limit");
-            msg.channel_id.say(&ctx.http, LIMIT_REACHED_MSG).await?;
+            ctx.reply(LIMIT_REACHED_MSG).await?;
         }
-        Err(e) => {
-            error!("{:?}", e);
-            msg.channel_id.say(&ctx.http, format!("{:?}", e)).await?;
+        Err(error) => {
+            error!("{error:?}");
+            ctx.reply(format!("{error:?}")).await?;
         }
     }
 
