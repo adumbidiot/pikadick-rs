@@ -50,7 +50,7 @@ impl Rule34Client {
                     .limit(Some(1_000))
                     .execute()
                     .await
-                    .context("failed to search rule34")
+                    .context("Failed to search rule34")
                     .map(Arc::new)
                     .map_err(ArcAnyhowError::new)
             })
@@ -89,6 +89,7 @@ async fn autocomplete_query(ctx: PoiseContext<'_>, partial: &str) -> Vec<String>
         let mut query = String::new();
         if let Some(head) = head.as_ref() {
             query.push_str(head);
+            query.push(' ');
         }
         query.push_str(tag);
 

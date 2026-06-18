@@ -12,18 +12,18 @@ path = "src/cli/main.rs"
 
 [dependencies]
 itoa = "1.0.18"
-quick-xml = { version = "0.39.4", features = [ "serialize" ] }
-reqwest = { version = "0.13.3", default-features = false, features = [ "json", "brotli", "http2" ] }
+quick-xml = { version = "0.40.1", features = [ "serialize" ] }
+reqwest = { version = "0.13.4", default-features = false, features = [ "json", "brotli", "http2" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 thiserror = "2.0.18"
-time = { version = "0.3.47", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
+time = { version = "0.3.49", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
 tokio = "1.52.3"
 url = { version = "2.5.8", features = [ "serde" ] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 
 # scrape
 once_cell = { version = "1.21.4", features = [ "std" ], default-features = false, optional = true }
-scraper = { version = "0.25.0", default-features = false, optional = true }
+scraper = { version = "0.27.0", default-features = false, optional = true }
 
 # cli
 argh = { version = "0.1.19", optional = true }

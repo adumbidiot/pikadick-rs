@@ -13,11 +13,11 @@ argh = "0.1.19"
 audiopus_sys = { version = "0.2.2", default-features = false }
 bewu-util = { git = "https://github.com/ThatAnnoyingKid/Bewu", version = "0.0.0", features = [ "async-timed-cache-cell", "async-timed-lru-cache" ] }
 bincode = { version = "2.0.1", features = [ "serde" ] }
-bitflags = "2.11.1"
-bytes = "1.11.1"
-camino = { version = "1.2.2", features = [ "serde1" ] }
+bitflags = "2.13.0"
+bytes = "1.12.0"
+camino = { version = "1.2.3", features = [ "serde1" ] }
 crossbeam = "0.8.4"
-dashmap = "6.1.0"
+dashmap = "6.2.1"
 deviantart = { git = "https://github.com/adumbidiot/deviantart-rs", default-features = false, features = [ "rustls-tls" ] }
 futures = { version = "0.3.32", features = [ "std" ], default-features = false }
 heim = { version = "0.1.0-rc.1", features = [ "cpu", "virt" ] }
@@ -25,7 +25,7 @@ indexmap = "2.14.0"
 insta = { path = "./lib/insta-rs", default-features = false, features = [ "rustls" ] }
 iqdb = { path = "./lib/iqdb-rs", default-features = false, features = [ "rustls" ] }
 itoa = "1.0.18"
-mimalloc = "0.1.50"
+mimalloc = "0.1.52"
 nd-async-rusqlite = { git = "https://github.com/nathaniel-daniel/nd-async-rusqlite-rs", version = "0.0.0", features = [ "bundled", "trace", "wal-pool", "fallible_uint" ] }
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", features = [ "download-to-path", "drop-remove-path", "arc-anyhow-error" ] }
 nekos = { path = "./lib/nekos-rs", default-features = false, features = [ "rustls" ] }
@@ -38,21 +38,21 @@ r6tracker = { path = "./lib/r6tracker-rs", default-features = false, features = 
 rand = "0.10.1"
 reddit = { git = "https://github.com/nathaniel-daniel/reddit-rs", features = [ "rustls-tls" ], default-features = false }
 reddit-tube = { path = "./lib/reddit-tube-rs", default-features = false, features = [ "rustls" ] }
-regex = "1.12.3"
-reqwest = { version = "0.13.3", default-features = false }
+regex = "1.12.4"
+reqwest = { version = "0.13.4", default-features = false }
 rule34 = { path = "./lib/rule34-rs", default-features = false, features = [ "rustls" ] }
-rusqlite = { version = "0.38.0", features = [ "blob" ] }
+rusqlite = { version = "0.40.1", features = [ "blob" ] }
 ryu = "1.0.23"
 sauce-nao = { git = "https://github.com/adumbidiot/sauce-nao-rs", default-features = false, features = [ "rustls-tls" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serenity = { version = "0.12.5", features = [ "client", "standard_framework", "rustls_backend", "voice", "cache", "unstable_discord_api" ], default-features = false }
 shift-orcz = { git = "https://github.com/adumbidiot/shift-client-rs", default-features = false, features = [ "rustls" ] } 
 songbird = "0.5.0"
-systemstat = "0.2.6"
+systemstat = "0.2.7"
 thiserror = "2.0.18"
 tic-tac-toe = { path = "lib/tic-tac-toe-rs" }
 tikwm = { git = "https://github.com/adumbidiot/tiktok-rs", default-features = false, features = [ "rustls" ] }
-time = "0.3.47"
+time = "0.3.49"
 tiny-skia = { version = "0.12.0", features = [ "std", "simd", "png-format" ], default-features = false }
 tokio = { version = "1.52.3", features = [ "rt-multi-thread", "signal", "sync", "time", "parking_lot" ] }
 tokio-ffmpeg-cli = { path = "./lib/tokio-ffmpeg-cli-rs" }
@@ -71,7 +71,7 @@ yodaspeak = { path = "lib/yodaspeak-rs", default-features = false, features = [ 
 zalgo = { git = "https://github.com/nathaniel-daniel/zalgo-rs", default-features = false }
 
 # Optional
-openssl = { version = "0.10.79", optional = true, features = [ "vendored" ] }
+openssl = { version = "0.10.81", optional = true, features = [ "vendored" ] }
 
 [features]
 # Note: This is needed for cross comp

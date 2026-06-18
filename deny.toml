@@ -166,7 +166,14 @@ skip = [
     { name = "getrandom", version = "0.3.4" },
     { name = "cpufeatures", version = "0.2.17" },
     { name = "chacha20", version = "0.9.1" },
-    { name = "hashbrown", version = "0.16.1" },
+    { name = "tendril", version = "0.4.3" },
+    { name = "selectors", version = "0.33.0" },
+    { name = "scraper", version = "0.25.0" },
+    { name = "markup5ever", version = "0.36.1" },
+    { name = "html5ever", version = "0.36.1" },
+    { name = "ego-tree", version = "0.10.0" },
+    { name = "cssparser-macros", version = "0.6.1" },
+    { name = "cssparser", version = "0.36.0" },
 ]
 
 # Mostly soundness denies since the advisory lacks a section for soundess bugs

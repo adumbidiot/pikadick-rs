@@ -11,8 +11,8 @@ required-features = [ "cli" ]
 
 [dependencies]
 lazy_static = "1.5.0"
-reqwest = { version = "0.13.3", default-features = false, features = [ "multipart", "stream" ] }
-scraper = { version = "0.25.0", default-features = false }
+reqwest = { version = "0.13.4", default-features = false, features = [ "multipart", "stream" ] }
+scraper = { version = "0.27.0", default-features = false }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = [ "fs", "rt" ] }
 tokio-util = { version = "0.7.18", features = ["codec"] }
