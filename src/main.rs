@@ -309,7 +309,6 @@ impl TypeMapKey for ClientDataKey {
 #[group]
 #[commands(
     system,
-    shift,
     reddit_embed,
     cmd,
     latency,

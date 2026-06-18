@@ -5,7 +5,6 @@ use crate::{
         iqdb::IqdbClient,
         reddit_embed::RedditEmbedData,
         sauce_nao::SauceNaoClient,
-        shift::ShiftClient,
         tic_tac_toe::TicTacToeData,
         tiktok_embed::TikTokData,
     },
@@ -27,8 +26,6 @@ pub struct ClientData {
     /// The discord shard_manager
     pub shard_manager: Arc<ShardManager>,
 
-    /// The shift client
-    pub shift_client: ShiftClient,
     /// The reddit embed data
     pub reddit_embed_data: RedditEmbedData,
     /// The enabled check data
@@ -77,7 +74,6 @@ impl ClientData {
         Ok(ClientData {
             shard_manager,
 
-            shift_client: ShiftClient::new(),
             reddit_embed_data: Default::default(),
             enabled_check_data: Default::default(),
             insta_client: insta::Client::new(),

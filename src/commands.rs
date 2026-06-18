@@ -13,7 +13,6 @@ pub mod reddit;
 pub mod reddit_embed;
 pub mod rule34;
 pub mod sauce_nao;
-pub mod shift;
 pub mod stop;
 pub mod system;
 pub mod tic_tac_toe;
@@ -41,7 +40,6 @@ pub use self::{
     reddit_embed::REDDIT_EMBED_COMMAND,
     rule34::rule34,
     sauce_nao::SAUCE_NAO_COMMAND,
-    shift::SHIFT_COMMAND,
     stop::STOP_COMMAND,
     system::SYSTEM_COMMAND,
     tic_tac_toe::TIC_TAC_TOE_COMMAND,
