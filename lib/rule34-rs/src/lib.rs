@@ -16,6 +16,7 @@ pub use crate::{
     error::Error,
     search_query_builder::SearchQueryBuilder,
     types::{
+        AutocompleteResult,
         DeletedImageList,
         Note,
         NoteList,
@@ -26,7 +27,6 @@ pub use crate::{
         Tag,
         TagKind,
         TagList,
-        AutocompleteResult,
     },
 };
 #[cfg(feature = "scrape")]
@@ -257,10 +257,12 @@ mod test {
         assert!(post_3.id.get() == 3);
         assert!(post_3.source.as_deref() == Some("https://www.pixiv.net/en/artworks/12972758"));
     }
-    
+
     #[test]
     fn autocomplete() {
-        let results = RUNTIME.block_on(CLIENT.autocomplete("1gir")).expect("Failed to get autocomplete");
+        let results = RUNTIME
+            .block_on(CLIENT.autocomplete("1gir"))
+            .expect("Failed to get autocomplete");
         dbg!(results);
     }
 }

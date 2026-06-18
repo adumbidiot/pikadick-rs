@@ -10,6 +10,7 @@ pub use self::{
 #[cfg(feature = "scrape")]
 use crate::HtmlPost;
 use crate::{
+    AutocompleteResult,
     DeletedImageList,
     Error,
 };
@@ -30,7 +31,6 @@ use std::{
         Instant,
     },
 };
-use crate::AutocompleteResult;
 use url::Url;
 
 // Default Header values

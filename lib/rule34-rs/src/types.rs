@@ -40,9 +40,9 @@ pub struct AutocompleteResult {
     ///
     /// Example: 1girls (5075347)
     pub label: String,
-    
+
     /// The raw tag value for this result.
     ///
     /// Example: 1girls
-    pub value: String
+    pub value: String,
 }
