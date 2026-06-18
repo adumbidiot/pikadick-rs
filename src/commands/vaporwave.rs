@@ -9,8 +9,8 @@ fn vaporwave_str(data: &str) -> String {
             let ch_u32 = u32::from(ch);
             if (33..=270).contains(&ch_u32) {
                 ch_u32
-                    .checked_add(65248)
-                    .and_then(std::char::from_u32)
+                    .checked_add(65_248)
+                    .and_then(char::from_u32)
                     .unwrap_or(ch)
             } else {
                 ' '

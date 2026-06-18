@@ -30,6 +30,7 @@ use std::{
         Instant,
     },
 };
+use crate::AutocompleteResult;
 use url::Url;
 
 // Default Header values
@@ -264,6 +265,20 @@ impl Client {
     /// This is undocumented.
     pub fn list_notes(&self) -> NotesListQueryBuilder<'_> {
         NotesListQueryBuilder::new(self)
+    }
+
+    /// Autocomplete a tag.
+    pub async fn autocomplete(&self, query: &str) -> Result<Vec<AutocompleteResult>, Error> {
+        let url =
+            Url::parse_with_params("https://api.rule34.xxx/autocomplete.php", &[("q", query)])?;
+        let response = self
+            .client
+            .get(url.as_str())
+            .send()
+            .await?
+            .error_for_status()?;
+        let data = response.json().await?;
+        Ok(data)
     }
 }
 

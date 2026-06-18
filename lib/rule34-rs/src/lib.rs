@@ -26,6 +26,7 @@ pub use crate::{
         Tag,
         TagKind,
         TagList,
+        AutocompleteResult,
     },
 };
 #[cfg(feature = "scrape")]
@@ -255,5 +256,11 @@ mod test {
         let post_3 = response_3.posts.first().expect("missing post");
         assert!(post_3.id.get() == 3);
         assert!(post_3.source.as_deref() == Some("https://www.pixiv.net/en/artworks/12972758"));
+    }
+    
+    #[test]
+    fn autocomplete() {
+        let results = RUNTIME.block_on(CLIENT.autocomplete("1gir")).expect("Failed to get autocomplete");
+        dbg!(results);
     }
 }
