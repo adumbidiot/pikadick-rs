@@ -105,19 +105,20 @@ impl Rule34Client {
         &self,
         query: Option<String>,
     ) -> anyhow::Result<String> {
+        const HIGH_QUERY_COUNT: u16 = rule34::POST_LIST_LIMIT_MAX / 4;
+        const LOW_BUDGET: u8 = rule34::RATELIMIT_BUDGET / 2;
+
         let random_seed = rand::rng().random::<i64>();
         let limit = 10;
-        let (mut file_urls, last_fetched) = self
+        let (mut file_urls, query_stat) = self
             .database
-            .get_random_rule34_post_file_url_and_last_fetched_time(
-                query.clone(),
-                random_seed,
-                Some(limit),
-            )
+            .get_random_rule34_post_file_url_and_query_stat(query.clone(), random_seed, Some(limit))
             .await?;
 
-        if last_fetched.is_none_or(|value| value.duration_until(jiff::Timestamp::now()) > ONE_DAY)
-            || self.client.ratelimit_budget_remaining() < rule34::RATELIMIT_BUDGET / 2
+        if query_stat.is_none_or(|value| {
+            value.last_fetched.duration_until(jiff::Timestamp::now()) > ONE_DAY
+                || value.queries_since_last_fetch > u32::from(HIGH_QUERY_COUNT)
+        }) || self.client.ratelimit_budget_remaining() < LOW_BUDGET
             || file_urls.is_empty()
         {
             debug!("Fetching new data");

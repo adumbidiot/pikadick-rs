@@ -7,7 +7,7 @@ use nd_async_rusqlite::rusqlite::{
 */
 use std::num::NonZeroU64;
 
-///A rule34 post.
+/// A rule34 post.
 #[derive(Debug)]
 pub struct Rule34Post {
     pub id: NonZeroU64,

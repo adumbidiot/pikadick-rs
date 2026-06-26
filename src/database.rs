@@ -10,6 +10,7 @@ pub use self::{
     model::{
         JiffTimestampWrapper,
         Rule34Post,
+        Rule34QueryStat,
     },
     tic_tac_toe::{
         TicTacToeCreateGameError,

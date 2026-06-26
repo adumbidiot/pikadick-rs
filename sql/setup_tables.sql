@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS rule34_post_tag (
     FOREIGN KEY (tag_id) REFERENCES rule34_tag (id)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS rule34_query (
+CREATE TABLE IF NOT EXISTS rule34_query_stat (
     query TEXT NOT NULL PRIMARY KEY,
+    queries_since_last_fetch INTEGER NOT NULL,
     last_fetched INTEGER NOT NULL
 ) STRICT;

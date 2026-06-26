@@ -1,6 +1,7 @@
 use super::{
     JiffTimestampWrapper,
     Rule34Post,
+    Rule34QueryStat,
 };
 use crate::Database;
 use nd_async_rusqlite::rusqlite::{
@@ -32,21 +33,25 @@ const CLEAR_RULE34_POST_TAGS: &str = include_str!(concat!(
     "/sql/clear_rule34_post_tags.sql"
 ));
 
-const GET_RULE34_QUERY_LAST_FETCHED: &str = "
+const GET_RULE34_QUERY_STAT: &str = "
 SELECT
+    query,
+    queries_since_last_fetch,
     last_fetched
 FROM
-    rule34_query
+    rule34_query_stat
 WHERE
     query = :query;
 ";
 
-const UPSERT_RULE34_QUERY: &str = "
-INSERT INTO rule34_query (
+const UPSERT_RULE34_QUERY_STAT: &str = "
+INSERT INTO rule34_query_stat (
     query,
+    queries_since_last_fetch,
     last_fetched
 ) VALUES (
     :query,
+    :queries_since_last_fetch,
     :last_fetched
 ) ON CONFLICT (query) DO UPDATE SET
     query = :query,
@@ -124,9 +129,10 @@ impl Database {
 
                 {
                     transaction
-                        .prepare_cached(UPSERT_RULE34_QUERY)?
+                        .prepare_cached(UPSERT_RULE34_QUERY_STAT)?
                         .execute(named_params! {
                             ":query": query.as_deref().unwrap_or(""),
+                            ":queries_since_last_fetch": 0,
                             ":last_fetched": JiffTimestampWrapper(last_fetched),
                         })?;
                 }
@@ -137,13 +143,13 @@ impl Database {
             .await?
     }
 
-    /// Get a random rule34 file url by tag, along with the time the tag was last updated.
-    pub async fn get_random_rule34_post_file_url_and_last_fetched_time(
+    /// Get a random rule34 file url by tag, along with the query stats.
+    pub async fn get_random_rule34_post_file_url_and_query_stat(
         &self,
         query: Option<String>,
         random_seed: i64,
         limit: Option<usize>,
-    ) -> anyhow::Result<(Vec<String>, Option<jiff::Timestamp>)> {
+    ) -> anyhow::Result<(Vec<String>, Option<Rule34QueryStat>)> {
         self.database
             .read(move |database| {
                 let transaction = database.transaction()?;
@@ -162,20 +168,17 @@ impl Database {
                     .take(limit.unwrap_or(10))
                     .collect::<Result<Vec<String>, _>>()?;
 
-                let last_fetched = transaction
-                    .prepare_cached(GET_RULE34_QUERY_LAST_FETCHED)?
+                let query_stat = transaction
+                    .prepare_cached(GET_RULE34_QUERY_STAT)?
                     .query_one(
                         named_params! {
                             ":query": query.as_deref().unwrap_or(""),
                         },
-                        |row| {
-                            let last_fetched: JiffTimestampWrapper = row.get("last_fetched")?;
-                            Ok(last_fetched.0)
-                        },
+                        Rule34QueryStat::from_row,
                     )
                     .optional()?;
 
-                anyhow::Ok((results, last_fetched))
+                anyhow::Ok((results, query_stat))
             })
             .await?
     }

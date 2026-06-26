@@ -1,10 +1,12 @@
 mod jiff_timestamp_wrapper;
 mod rule34_post;
+mod rule34_query_stat;
 mod tiktok_embed_flags;
 
 pub use self::{
     jiff_timestamp_wrapper::JiffTimestampWrapper,
     rule34_post::Rule34Post,
+    rule34_query_stat::Rule34QueryStat,
     tiktok_embed_flags::TikTokEmbedFlags,
 };
 use nd_async_rusqlite::rusqlite::{
