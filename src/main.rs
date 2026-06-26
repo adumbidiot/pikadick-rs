@@ -340,8 +340,8 @@ async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
 }
 
 /// Set up a serenity client
-async fn setup_client(config: Arc<Config>) -> anyhow::Result<Client> {
-    let poise_data = Arc::new(PoiseDataInner::new(config.clone()));
+async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result<Client> {
+    let poise_data = Arc::new(PoiseDataInner::new(config.clone(), database).await?);
 
     let framework_options = poise::FrameworkOptions {
         commands: vec![
@@ -536,17 +536,17 @@ async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
     let database_path = config.data_dir.join("pikadick.sqlite");
     let database = Database::new(database_path)
         .await
-        .context("failed to open database")?;
+        .context("Failed to open database")?;
 
     // TODO: See if it is possible to start serenity without a network
-    info!("setting up client...");
-    let mut client = setup_client(config.clone())
+    info!("Setting up client...");
+    let mut client = setup_client(config.clone(), database.clone())
         .await
-        .context("failed to set up client")?;
+        .context("Failed to set up client")?;
 
     let client_data = ClientData::init(client.shard_manager.clone(), config, database.clone())
         .await
-        .context("client data initialization failed")?;
+        .context("Client data initialization failed")?;
 
     // Add all post-init client data changes here
     {
@@ -558,19 +558,19 @@ async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
         data.insert::<ClientDataKey>(client_data);
     }
 
-    info!("logging in...");
-    client.start().await.context("failed to run client")?;
+    info!("Logging in...");
+    client.start().await.context("Failed to run client")?;
     let client_data = {
         let mut data = client.data.write().await;
-        data.remove::<ClientDataKey>().expect("missing client data")
+        data.remove::<ClientDataKey>().expect("Missing client data")
     };
     drop(client);
 
-    info!("running shutdown routine for client data");
+    info!("Running shutdown routine for client data...");
     client_data.shutdown().await;
     drop(client_data);
 
-    info!("closing database...");
+    info!("Closing database...");
     database.close().await.context("failed to close database")?;
 
     Ok(())

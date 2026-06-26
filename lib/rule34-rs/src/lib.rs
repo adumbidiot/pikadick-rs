@@ -45,8 +45,11 @@ pub const TAGS_LIST_LIMIT_MAX: u16 = 1_000;
 // URL constants
 pub(crate) const URL_INDEX: &str = "https://rule34.xxx/index.php";
 
-/// The base Api Url
+/// The base api url
 pub(crate) const API_BASE_URL: &str = "https://api.rule34.xxx/index.php";
+
+/// The maximum number of requests that can be made per time interval.
+pub const RATELIMIT_BUDGET: u8 = 60;
 
 /// Turn a post id into a post url
 fn post_id_to_html_post_url(id: NonZeroU64) -> Url {

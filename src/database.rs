@@ -2,13 +2,17 @@ mod disabled_commands;
 mod kv_store;
 pub mod model;
 mod reddit_embed;
+mod rule34;
 mod tic_tac_toe;
 mod tiktok_embed;
 
-pub use self::tic_tac_toe::{
-    TicTacToeCreateGameError,
-    TicTacToeTryMoveError,
-    TicTacToeTryMoveResponse,
+pub use self::{
+    model::Rule34Post,
+    tic_tac_toe::{
+        TicTacToeCreateGameError,
+        TicTacToeTryMoveError,
+        TicTacToeTryMoveResponse,
+    },
 };
 use anyhow::Context;
 use camino::Utf8PathBuf;

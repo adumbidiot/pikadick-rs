@@ -1,6 +1,10 @@
+mod rule34_post;
 mod tiktok_embed_flags;
 
-pub use self::tiktok_embed_flags::TikTokEmbedFlags;
+pub use self::{
+    rule34_post::Rule34Post,
+    tiktok_embed_flags::TikTokEmbedFlags,
+};
 use nd_async_rusqlite::rusqlite::{
     ToSql,
     types::{
@@ -123,7 +127,7 @@ pub struct TicTacToePlayerParseError(std::num::ParseIntError);
 
 impl std::fmt::Display for TicTacToePlayerParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "invalid player".fmt(f)
+        "Invalid player".fmt(f)
     }
 }
 

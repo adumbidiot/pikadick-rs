@@ -13,6 +13,7 @@ use crate::{
     AutocompleteResult,
     DeletedImageList,
     Error,
+    RATELIMIT_BUDGET,
 };
 use reqwest::header::{
     HeaderMap,
@@ -41,7 +42,6 @@ static REFERER_VALUE: HeaderValue = HeaderValue::from_static("https://rule34.xxx
 static ACCEPT_LANGUAGE_VALUE: HeaderValue = HeaderValue::from_static("en,en-US;q=0,5");
 static ACCEPT_VALUE: HeaderValue = HeaderValue::from_static("*/*");
 
-const RATELIMIT_BUDGET: u8 = 60;
 const ONE_MINUTE: Duration = Duration::from_mins(1);
 
 #[derive(Debug)]
@@ -53,7 +53,7 @@ struct AuthState {
 #[derive(Debug)]
 struct RatelimitState {
     ratelimit_last_time: Instant,
-    ratelimit_budget: u8,
+    budget: u8,
 }
 
 #[derive(Debug)]
@@ -98,7 +98,7 @@ impl Client {
                 auth_state: std::sync::Mutex::new(None),
                 ratelimit_state: Mutex::new(RatelimitState {
                     ratelimit_last_time: Instant::now(),
-                    ratelimit_budget: RATELIMIT_BUDGET,
+                    budget: RATELIMIT_BUDGET,
                 }),
             }),
         }
@@ -137,12 +137,12 @@ impl Client {
                 let mut elapsed = state.ratelimit_last_time.elapsed();
                 if elapsed > ONE_MINUTE {
                     state.ratelimit_last_time = Instant::now();
-                    state.ratelimit_budget = RATELIMIT_BUDGET;
+                    state.budget = RATELIMIT_BUDGET;
                     elapsed = Duration::ZERO;
                 }
 
-                if state.ratelimit_budget > 0 {
-                    state.ratelimit_budget -= 1;
+                if state.budget > 0 {
+                    state.budget -= 1;
                     None
                 } else {
                     Some(ONE_MINUTE - elapsed)
@@ -156,6 +156,16 @@ impl Client {
                 None => return,
             }
         }
+    }
+
+    /// Get the amount ratelimit budget remaining for this time interval.
+    pub fn ratelimit_budget_remaining(&self) -> u8 {
+        let state = self
+            .state
+            .ratelimit_state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        state.budget
     }
 
     /// Send a GET web request to a `url` and get the result as a [`String`].

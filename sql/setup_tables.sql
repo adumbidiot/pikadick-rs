@@ -56,3 +56,23 @@ CREATE TABLE IF NOT EXISTS tiktok_embed_guild_settings (
     -- 1   | delete-link? | Whether the bot should delete the original link on success
     flags INTEGER NOT NULL DEFAULT 0
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS rule34_post (
+    id INTEGER NOT NULL PRIMARY KEY,
+    tags TEXT NOT NULL,
+    last_fetched INTEGER NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS rule34_tag (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS rule34_post_tag (
+    post_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    
+    PRIMARY KEY (post_id, tag_id),
+    FOREIGN KEY (post_id) REFERENCES rule34_post (id),
+    FOREIGN KEY (tag_id) REFERENCES rule34_tag (id)
+) STRICT;
