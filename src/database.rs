@@ -7,7 +7,10 @@ mod tic_tac_toe;
 mod tiktok_embed;
 
 pub use self::{
-    model::Rule34Post,
+    model::{
+        JiffTimestampWrapper,
+        Rule34Post,
+    },
     tic_tac_toe::{
         TicTacToeCreateGameError,
         TicTacToeTryMoveError,

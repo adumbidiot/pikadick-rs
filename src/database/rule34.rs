@@ -1,6 +1,12 @@
-use super::Rule34Post;
+use super::{
+    JiffTimestampWrapper,
+    Rule34Post,
+};
 use crate::Database;
-use nd_async_rusqlite::rusqlite::named_params;
+use nd_async_rusqlite::rusqlite::{
+    OptionalExtension,
+    named_params,
+};
 use std::collections::HashSet;
 
 const GET_RANDOM_RULE34_POST_SQL: &str = include_str!(concat!(
@@ -26,8 +32,34 @@ const CLEAR_RULE34_POST_TAGS: &str = include_str!(concat!(
     "/sql/clear_rule34_post_tags.sql"
 ));
 
+const GET_RULE34_QUERY_LAST_FETCHED: &str = "
+SELECT
+    last_fetched
+FROM
+    rule34_query
+WHERE
+    query = :query;
+";
+
+const UPSERT_RULE34_QUERY: &str = "
+INSERT INTO rule34_query (
+    query,
+    last_fetched
+) VALUES (
+    :query,
+    :last_fetched
+) ON CONFLICT (query) DO UPDATE SET
+    query = :query,
+    last_fetched = :last_fetched;
+";
+
 impl Database {
-    pub async fn upsert_rule34_posts(&self, posts: Vec<Rule34Post>) -> anyhow::Result<()> {
+    pub async fn upsert_rule34_posts_and_query(
+        &self,
+        posts: Vec<Rule34Post>,
+        query: Option<String>,
+        last_fetched: jiff::Timestamp,
+    ) -> anyhow::Result<()> {
         if posts.is_empty() {
             return Ok(());
         }
@@ -90,6 +122,15 @@ impl Database {
                     }
                 }
 
+                {
+                    transaction
+                        .prepare_cached(UPSERT_RULE34_QUERY)?
+                        .execute(named_params! {
+                            ":query": query.as_deref().unwrap_or(""),
+                            ":last_fetched": JiffTimestampWrapper(last_fetched),
+                        })?;
+                }
+
                 transaction.commit()?;
                 anyhow::Ok(())
             })
@@ -102,7 +143,7 @@ impl Database {
         query: Option<String>,
         random_seed: i64,
         limit: Option<usize>,
-    ) -> anyhow::Result<Vec<String>> {
+    ) -> anyhow::Result<(Vec<String>, Option<jiff::Timestamp>)> {
         self.database
             .read(move |database| {
                 let transaction = database.transaction()?;
@@ -121,7 +162,20 @@ impl Database {
                     .take(limit.unwrap_or(10))
                     .collect::<Result<Vec<String>, _>>()?;
 
-                anyhow::Ok(results)
+                let last_fetched = transaction
+                    .prepare_cached(GET_RULE34_QUERY_LAST_FETCHED)?
+                    .query_one(
+                        named_params! {
+                            ":query": query.as_deref().unwrap_or(""),
+                        },
+                        |row| {
+                            let last_fetched: JiffTimestampWrapper = row.get("last_fetched")?;
+                            Ok(last_fetched.0)
+                        },
+                    )
+                    .optional()?;
+
+                anyhow::Ok((results, last_fetched))
             })
             .await?
     }

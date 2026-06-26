@@ -5,28 +5,28 @@ use crate::{
     database::Rule34Post,
 };
 use anyhow::Context as _;
-use bewu_util::AsyncTimedLruCache;
+use bewu_util::{
+    AsyncMutexMap,
+    AsyncTimedLruCache,
+};
+use jiff::SignedDuration;
 use nd_util::ArcAnyhowError;
 use rand::{
     RngExt,
     prelude::IndexedRandom,
 };
 use std::{
-    collections::HashMap,
     sync::Arc,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::Duration,
 };
 use tracing::{
+    debug,
     info,
     warn,
-    debug,
 };
 
 const FIVE_MINUTES: Duration = Duration::from_secs(60 * 5);
-const ONE_DAY: Duration = Duration::from_hours(24);
+const ONE_DAY: SignedDuration = SignedDuration::from_hours(24);
 
 fn post_list_to_database_model(post_list: &rule34::PostList) -> Vec<Rule34Post> {
     let last_fetched = jiff::Timestamp::now();
@@ -42,19 +42,13 @@ fn post_list_to_database_model(post_list: &rule34::PostList) -> Vec<Rule34Post> 
         .collect()
 }
 
-#[derive(Debug)]
-struct FileUrlSimpleMapEntry {
-    age: Option<Instant>,
-}
-
 /// A caching rule34 client
 #[derive(Debug)]
 pub struct Rule34Client {
     client: rule34::Client,
     database: Database,
-    file_url_simple_map:
-        std::sync::Mutex<HashMap<Option<String>, Arc<tokio::sync::Mutex<FileUrlSimpleMapEntry>>>>,
     search_cache: AsyncTimedLruCache<Option<String>, Result<Arc<rule34::PostList>, ArcAnyhowError>>,
+    search_map: AsyncMutexMap<Option<String>>,
 }
 
 impl Rule34Client {
@@ -63,14 +57,14 @@ impl Rule34Client {
         let client = rule34::Client::new();
         client.set_auth(user_id, api_key);
 
-        let file_url_simple_map = std::sync::Mutex::new(HashMap::new());
         let search_cache = AsyncTimedLruCache::new(100, FIVE_MINUTES);
+        let search_map = AsyncMutexMap::new();
 
         Rule34Client {
             client,
             database,
-            file_url_simple_map,
             search_cache,
+            search_map,
         }
     }
 
@@ -93,10 +87,11 @@ impl Rule34Client {
     }
 
     async fn list_posts_and_get_file_url(&self, query: Option<String>) -> anyhow::Result<String> {
+        let now = jiff::Timestamp::now();
         let post_list = self.list(query.clone()).await?;
         let posts = post_list_to_database_model(&post_list);
         self.database
-            .upsert_rule34_posts(posts)
+            .upsert_rule34_posts_and_query(posts, query.clone(), now)
             .await
             .context("Failed to upsert post")?;
         post_list
@@ -110,23 +105,9 @@ impl Rule34Client {
         &self,
         query: Option<String>,
     ) -> anyhow::Result<String> {
-        dbg!(&self.file_url_simple_map);
-        
-        let entry = {
-            self.file_url_simple_map
-                .lock()
-                .unwrap_or_else(|error| error.into_inner())
-                .entry(query.clone())
-                .or_insert(Arc::new(tokio::sync::Mutex::new(FileUrlSimpleMapEntry {
-                    age: None,
-                })))
-                .clone()
-        };
-        let mut entry = entry.lock().await;
-
         let random_seed = rand::rng().random::<i64>();
         let limit = 10;
-        let mut file_urls = self
+        let (mut file_urls, last_fetched) = self
             .database
             .get_random_rule34_post_file_url_and_last_fetched_time(
                 query.clone(),
@@ -135,16 +116,13 @@ impl Rule34Client {
             )
             .await?;
 
-        if entry.age.is_none_or(|value| value.elapsed() > ONE_DAY)
+        if last_fetched.is_none_or(|value| value.duration_until(jiff::Timestamp::now()) > ONE_DAY)
             || self.client.ratelimit_budget_remaining() < rule34::RATELIMIT_BUDGET / 2
             || file_urls.is_empty()
         {
-            entry.age = Some(Instant::now());
-            
             debug!("Fetching new data");
             return self.list_posts_and_get_file_url(query).await;
         }
-        entry.age = Some(Instant::now());
 
         // TODO: Handle deleted posts.
         let file_url = file_urls
@@ -152,12 +130,14 @@ impl Rule34Client {
             .with_context(|| format!("No results for {query:?}"))?;
 
         debug!("Using cached data");
-        
+
         Ok(file_url)
     }
 
     /// Get a random post file url.
     async fn get_random_post_file_url(&self, query: Option<String>) -> anyhow::Result<String> {
+        let _lock = self.search_map.lock(query.clone()).await;
+
         // TODO: Expand this check to include AND queries.
         // TODO: Consider using query parser.
         if query

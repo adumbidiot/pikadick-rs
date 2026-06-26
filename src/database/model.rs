@@ -1,7 +1,9 @@
+mod jiff_timestamp_wrapper;
 mod rule34_post;
 mod tiktok_embed_flags;
 
 pub use self::{
+    jiff_timestamp_wrapper::JiffTimestampWrapper,
     rule34_post::Rule34Post,
     tiktok_embed_flags::TikTokEmbedFlags,
 };

@@ -76,3 +76,8 @@ CREATE TABLE IF NOT EXISTS rule34_post_tag (
     FOREIGN KEY (post_id) REFERENCES rule34_post (id),
     FOREIGN KEY (tag_id) REFERENCES rule34_tag (id)
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS rule34_query (
+    query TEXT NOT NULL PRIMARY KEY,
+    last_fetched INTEGER NOT NULL
+) STRICT;

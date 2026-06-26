@@ -16,7 +16,7 @@ quick-xml = { version = "0.40.1", features = [ "serialize" ] }
 reqwest = { version = "0.13.4", default-features = false, features = [ "json", "brotli", "http2" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 thiserror = "2.0.18"
-time = { version = "0.3.49", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
+time = { version = "0.3.51", features = [ "serde", "parsing", "formatting", "macros" ], default-features = false }
 tokio = "1.52.3"
 url = { version = "2.5.8", features = [ "serde" ] }
 serde_json = "1.0.150"
@@ -27,7 +27,7 @@ scraper = { version = "0.27.0", default-features = false, optional = true }
 
 # cli
 argh = { version = "0.1.19", optional = true }
-anyhow = { version = "1.0.102", optional = true }
+anyhow = { version = "1.0.103", optional = true }
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", features = [ "download-to-path" ], optional = true }
 
 [dev-dependencies]
