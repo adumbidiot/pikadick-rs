@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS tiktok_embed_guild_settings (
 CREATE TABLE IF NOT EXISTS rule34_post (
     id INTEGER NOT NULL PRIMARY KEY,
     tags TEXT NOT NULL,
+    file_url TEXT NOT NULL,
     last_fetched INTEGER NOT NULL
 ) STRICT;
 

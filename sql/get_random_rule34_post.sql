@@ -1,5 +1,6 @@
 SELECT
     rule34_post.id AS id,
+    rule34_post.tags AS tags,
     rule34_post.file_url AS file_url,
     rule34_post.last_fetched AS last_fetched
 FROM
