@@ -15,9 +15,12 @@ use crate::{
     Error,
     RATELIMIT_BUDGET,
 };
-use reqwest::header::{
-    HeaderMap,
-    HeaderValue,
+use reqwest::{
+    StatusCode,
+    header::{
+        HeaderMap,
+        HeaderValue,
+    },
 };
 #[cfg(feature = "scrape")]
 use scraper::Html;
@@ -166,6 +169,34 @@ impl Client {
             .lock()
             .unwrap_or_else(|error| error.into_inner());
         state.budget
+    }
+
+    async fn ratelimited<FN, FUT, R>(&self, mut func: FN) -> Result<R, Error>
+    where
+        FN: FnMut() -> FUT,
+        FUT: Future<Output = Result<R, Error>>,
+    {
+        const MAX_TRIES: usize = 3;
+
+        let mut tries = 0;
+        loop {
+            self.ratelimit().await;
+
+            let future = func();
+            let result = future.await;
+
+            match result {
+                Ok(value) => return Ok(value),
+                Err(Error::Reqwest(error))
+                    if error.status() == Some(StatusCode::TOO_MANY_REQUESTS) => {}
+                Err(error) => return Err(error),
+            }
+
+            tries += 1;
+            if tries == MAX_TRIES {
+                return Err(Error::Ratelimited);
+            }
+        }
     }
 
     /// Send a GET web request to a `url` and get the result as a [`String`].

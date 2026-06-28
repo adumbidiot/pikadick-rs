@@ -6,6 +6,44 @@ use crate::{
 use std::num::NonZeroU64;
 use url::Url;
 
+/// Attempt to fix a tag name.
+///
+/// Rule34 fails to understand some urls with weird characters, like "é".
+/// However, it can understand some of these if they are encoded as an xml entity.
+/// This function uses a mapping, that is determined experimentally, to correctly escape these chars.
+fn fix_tag_name(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    for c in input.chars() {
+        match c {
+            'é' => output.push_str("&eacute;"),
+            'ú' => output.push_str("&uacute;"),
+            'ó' => output.push_str("&oacute;"),
+            'ñ' => output.push_str("&ntilde;"),
+            '♥' => output.push_str("&hearts;"),
+            'á' => output.push_str("&aacute;"),
+            'χ' => output.push_str("&chi;"),
+            '¹' => output.push_str("&sup1;"),
+            '³' => output.push_str("&sup3;"),
+            '’' => output.push_str("&rsquo;"),
+            '…' => output.push_str("&hellip;"),
+            '&' => output.push_str("&amp;"),
+            '"' => output.push_str("&quot;"),
+            '<' => output.push_str("&lt;"),
+            '>' => output.push_str("&gt;"),
+            '—' => output.push_str("&mdash;"),
+            // Yes, this is not "&apos;", even though it looks like it should be.
+            // Yes, there needs to be exactly one leading zero for some reason.
+            '\'' => output.push_str("&#039;"),
+            'α' => output.push_str("&alpha;"),
+            'ü' => output.push_str("&uuml;"),
+            'ä' => output.push_str("&auml;"),
+            'ö' => output.push_str("&ouml;"),
+            _ => output.push(c),
+        }
+    }
+    output
+}
+
 /// A query builder to get tags
 #[derive(Debug)]
 pub struct TagListQueryBuilder<'a> {
@@ -169,7 +207,6 @@ impl<'a> TagListQueryBuilder<'a> {
     /// Execute the query
     pub async fn execute(&self) -> Result<TagList, Error> {
         let url = self.get_url()?;
-        self.client.ratelimit().await;
 
         // We run this on the blocking threadpool out of an abundance of caution.
         // On a 10th gen i7, this runs around 2.5 milliseconds tops in release mode.
@@ -182,44 +219,8 @@ impl<'a> TagListQueryBuilder<'a> {
         //
         // quick_xml also may get async support via https://github.com/tafia/quick-xml/pull/314 in the future as well,
         // making all this optimizing a moot point.
-        self.client.get_xml(url.as_str()).await
+        self.client
+            .ratelimited(|| async { self.client.get_xml(url.as_str()).await })
+            .await
     }
-}
-
-/// Attempt to fix a tag name.
-///
-/// Rule34 fails to understand some urls with weird characters, like "é".
-/// However, it can understand some of these if they are encoded as an xml entity.
-/// This function uses a mapping, that is determined experimentally, to correctly escape these chars.
-fn fix_tag_name(input: &str) -> String {
-    let mut output = String::with_capacity(input.len());
-    for c in input.chars() {
-        match c {
-            'é' => output.push_str("&eacute;"),
-            'ú' => output.push_str("&uacute;"),
-            'ó' => output.push_str("&oacute;"),
-            'ñ' => output.push_str("&ntilde;"),
-            '♥' => output.push_str("&hearts;"),
-            'á' => output.push_str("&aacute;"),
-            'χ' => output.push_str("&chi;"),
-            '¹' => output.push_str("&sup1;"),
-            '³' => output.push_str("&sup3;"),
-            '’' => output.push_str("&rsquo;"),
-            '…' => output.push_str("&hellip;"),
-            '&' => output.push_str("&amp;"),
-            '"' => output.push_str("&quot;"),
-            '<' => output.push_str("&lt;"),
-            '>' => output.push_str("&gt;"),
-            '—' => output.push_str("&mdash;"),
-            // Yes, this is not "&apos;", even though it looks like it should be.
-            // Yes, there needs to be exactly one leading zero for some reason.
-            '\'' => output.push_str("&#039;"),
-            'α' => output.push_str("&alpha;"),
-            'ü' => output.push_str("&uuml;"),
-            'ä' => output.push_str("&auml;"),
-            'ö' => output.push_str("&ouml;"),
-            _ => output.push(c),
-        }
-    }
-    output
 }

@@ -33,6 +33,8 @@ use tracing::{
 const ONE_DAY: SignedDuration = SignedDuration::from_hours(24);
 const RULE34_ICON_URL: &str = "https://rule34.xxx/apple-touch-icon.png";
 const RULE34_COLOR: Color = Color::from_rgb(0xB1, 0xE6, 0xAA);
+// Embeds fail to load images sometimes?
+const ENABLE_EMBED: bool = false;
 
 fn post_list_to_database_model(post_list: &rule34::PostList) -> Vec<Rule34Post> {
     let last_fetched = jiff::Timestamp::now();
@@ -223,13 +225,13 @@ pub async fn rule34(
     match result {
         Ok(post) => {
             const MAX_FOOTER_SIZE: usize = 2048;
-            
+
             let post_url = format!(
                 "https://rule34.xxx/index.php?page=post&s=view&id={}",
                 post.id
             );
             #[expect(clippy::case_sensitive_file_extension_comparisons)]
-            if post.file_url.ends_with(".mp4") {
+            if post.file_url.ends_with(".mp4") || !ENABLE_EMBED {
                 let content = format!("[Rule34 {}]({})\n{}", post.id, post_url, post.file_url);
                 reply_builder = reply_builder.content(content);
             } else {

@@ -10,7 +10,6 @@ authors = [ "adumbidiot <nathaniel.daniel23@outlook.com>" ]
 [dependencies]
 anyhow = "1.0.103"
 argh = "0.1.19"
-audiopus_sys = { version = "0.2.2", default-features = false }
 bewu-util = { git = "https://github.com/ThatAnnoyingKid/Bewu", version = "0.0.0", features = [ "async-timed-cache-cell", "async-timed-lru-cache", "async-mutex-map" ] }
 bincode = { version = "2.0.1", features = [ "serde" ] }
 bitflags = "2.13.0"
@@ -25,6 +24,7 @@ indexmap = "2.14.0"
 insta = { path = "./lib/insta-rs", default-features = false, features = [ "rustls" ] }
 iqdb = { path = "./lib/iqdb-rs", default-features = false, features = [ "rustls" ] }
 itoa = "1.0.18"
+jiff = "0.2.29"
 mimalloc = "0.1.52"
 nd-async-rusqlite = { git = "https://github.com/nathaniel-daniel/nd-async-rusqlite-rs", version = "0.0.0", features = [ "bundled", "trace", "wal-pool", "fallible_uint" ] }
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", features = [ "download-to-path", "drop-remove-path", "arc-anyhow-error" ] }
@@ -46,7 +46,7 @@ ryu = "1.0.23"
 sauce-nao = { git = "https://github.com/adumbidiot/sauce-nao-rs", default-features = false, features = [ "rustls-tls" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serenity = { version = "0.12.5", features = [ "client", "standard_framework", "rustls_backend", "voice", "cache", "unstable_discord_api" ], default-features = false }
-songbird = "0.6.0"
+songbird = { version = "0.6.0", features = [ "backend-mousiki" ] }
 systemstat = "0.2.7"
 thiserror = "2.0.18"
 tic-tac-toe = { path = "lib/tic-tac-toe-rs" }
@@ -71,14 +71,10 @@ zalgo = { git = "https://github.com/nathaniel-daniel/zalgo-rs", default-features
 
 # Optional
 openssl = { version = "0.10.81", optional = true, features = [ "vendored" ] }
-jiff = "0.2.29"
 
 [features]
 # Note: This is needed for cross comp
 use-openssl-vendored = [ "openssl" ]
-pkg-config = [
-    "audiopus_sys/pkg-config",
-]
 
 [lints.clippy]
 # Deny
@@ -139,10 +135,11 @@ zero_sized_map_values = "warn"
 # heim = { git = "https://github.com/heim-rs/heim", rev = "b292f1535bb27c03800cdb7509fa81a40859fbbb" }
 heim = { git = "https://github.com/vectordotdev/heim", branch = "update-nix" }
 
-# Fix ntapi 0.3.0 not compiling on newer Rust versions
+# Fix ntapi 0.3.0 not compiling on newer Rust versions.
 ntapi3 = { version = "0.3.0", git = "https://github.com/MSxDOS/ntapi", rev = "2148881c30e8da6a3ff585efd1c7d8ad125ccd2c", package = "ntapi" }
 
-audiopus_sys = { git = "https://github.com/adumbidiot/audiopus_sys", branch = "pkg-config" }
+# This allows us to use the pure-rust opus2 backend to make cross-compilation easier.
+songbird = { git = "https://github.com/adumbidiot/songbird", branch = "opus2-backends" }
 
 # To make image drawing times sane
 [profile.dev.package.tiny-skia]
