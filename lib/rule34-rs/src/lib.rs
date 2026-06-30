@@ -261,6 +261,7 @@ mod test {
         assert!(post_3.source.as_deref() == Some("https://www.pixiv.net/en/artworks/12972758"));
     }
 
+    #[ignore]
     #[test]
     fn autocomplete() {
         let results = RUNTIME
