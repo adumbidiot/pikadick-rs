@@ -1,4 +1,15 @@
 use anyhow::Context;
+use skrifa::{
+    MetadataProvider,
+    outline::{
+        DrawSettings,
+        OutlinePen,
+    },
+    prelude::{
+        LocationRef,
+        Size,
+    },
+};
 use std::{
     sync::{
         Arc,
@@ -17,14 +28,13 @@ use tiny_skia::{
 };
 use tokio::sync::Semaphore;
 use tracing::info;
-use ttf_parser::OutlineBuilder;
 
 const FONT_BYTES: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/Averia_Serif_Libre/AveriaSerifLibre-Light.ttf"
 ));
-static FONT_FACE: LazyLock<ttf_parser::Face<'static>> =
-    LazyLock::new(|| ttf_parser::Face::parse(FONT_BYTES, 0).expect("Failed to load FONT_BYTES"));
+static FONT_FACE: LazyLock<skrifa::FontRef<'static>> =
+    LazyLock::new(|| skrifa::FontRef::new(FONT_BYTES).expect("Failed to load FONT_BYTES"));
 
 const RENDERED_SIZE: u16 = 600;
 const SQUARE_SIZE: u16 = RENDERED_SIZE / 3;
@@ -33,6 +43,59 @@ const SQUARE_SIZE_F32: f32 = SQUARE_SIZE as f32;
 const HALF_SQUARE_SIZE_F32: f32 = SQUARE_SIZE_F32 / 2.0;
 
 const MAX_PARALLEL_RENDER_LIMIT: usize = 4;
+
+/// Utility to draw a font glyph to a path.
+#[derive(Debug)]
+pub(crate) struct SkiaOutlinePen(PathBuilder);
+
+impl SkiaOutlinePen {
+    /// Make a new [`SkiaOutlinePen`].
+    pub(crate) fn new() -> Self {
+        Self(Default::default())
+    }
+
+    /// Get the inner [`tiny_skia::Path`].
+    pub(crate) fn into_path(self) -> Option<Path> {
+        let mut path = self.0.finish()?;
+
+        // This transform is needed to make skrifa's coordinate system agree with tiny-skia's
+        let bounds = path.bounds();
+        let transform = Transform::from_scale(1.0, -1.0)
+            .post_translate(-bounds.x(), bounds.y() + bounds.height());
+        path = path.transform(transform)?;
+
+        Some(path)
+    }
+}
+
+impl Default for SkiaOutlinePen {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl OutlinePen for SkiaOutlinePen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.move_to(x, y);
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.0.line_to(x, y);
+    }
+
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        self.0.quad_to(x1, y1, x, y);
+    }
+
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        // TODO: This is not used, is it implemented correctly?
+        self.0.cubic_to(x1, y1, x2, y2, x, y);
+    }
+
+    fn close(&mut self) {
+        self.0.close();
+    }
+}
 
 /// Render a Tic-Tac-Toe board
 #[derive(Debug, Clone)]
@@ -71,18 +134,23 @@ impl Renderer {
         let mut number_paths = Vec::with_capacity(10);
         let mut paint = Paint::default();
         paint.set_color_rgba8(255, 255, 255, 255);
-        for i in b'0'..=b'9' {
-            let glyph_id = FONT_FACE
-                .glyph_index(char::from(i))
-                .with_context(|| format!("Missing glyph for \"{}\"", char::from(i)))?;
+        let outlines = FONT_FACE.outline_glyphs();
+        let charmap = FONT_FACE.charmap();
+        for ch in '0'..='9' {
+            let glyph_id = charmap
+                .map(ch)
+                .with_context(|| format!("Missing glyph id for \"{ch}\""))?;
+            let glyph = outlines
+                .get(glyph_id)
+                .with_context(|| format!("Missing glyph for \"{ch}\""))?;
 
-            let mut builder = SkiaBuilder::new();
-            let _bb = FONT_FACE
-                .outline_glyph(glyph_id, &mut builder)
-                .with_context(|| format!("Missing glyph bounds for \"{}\"", char::from(i)))?;
-            let path = builder.into_path().with_context(|| {
-                format!("Failed to generate glyph path for \"{}\"", char::from(i))
-            })?;
+            let mut skia_outline_pen = SkiaOutlinePen::new();
+            let settings = DrawSettings::unhinted(Size::unscaled(), LocationRef::default());
+            glyph.draw(settings, &mut skia_outline_pen)?;
+
+            let path = skia_outline_pen
+                .into_path()
+                .with_context(|| format!("Failed to generate glyph path for \"{ch}\""))?;
 
             number_paths.push(path);
         }
@@ -144,7 +212,7 @@ impl Renderer {
                     ),
                 };
                 let path =
-                    path.with_context(|| format!("failed to build path for team '{:?}'", team))?;
+                    path.with_context(|| format!("Failed to build path for team \"{team:?}\""))?;
 
                 pixmap.stroke_path(&path, &paint, &stroke, transform, None);
             } else {
@@ -165,17 +233,17 @@ impl Renderer {
         // Draw winning line
         if let Some(winner_info) = board.get_winner_info() {
             draw_winning_line(&mut pixmap, stroke, paint, winner_info)
-                .context("failed to draw winning line")?;
+                .context("Failed to draw winning line")?;
         }
 
         let draw_end = Instant::now();
-        info!("board draw time: {:?}", draw_end - draw_start);
+        info!("Board draw time: {:?}", draw_end - draw_start);
 
         let encode_start = Instant::now();
         let img = pixmap.encode_png().context("failed to encode board")?;
         let encode_end = Instant::now();
 
-        info!("board png encode time: {:?}", encode_end - encode_start);
+        info!("Board png encode time: {:?}", encode_end - encode_start);
 
         Ok(img)
     }
@@ -246,59 +314,6 @@ fn draw_winning_line(
     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
 
     Ok(())
-}
-
-/// Utility to draw a font glyph to a path.
-#[derive(Debug)]
-pub(crate) struct SkiaBuilder(PathBuilder);
-
-impl SkiaBuilder {
-    /// Make a new [`SkiaBuilder`].
-    pub(crate) fn new() -> Self {
-        Self(Default::default())
-    }
-
-    /// Get the inner [`tiny_skia::Path`].
-    pub(crate) fn into_path(self) -> Option<Path> {
-        let mut path = self.0.finish()?;
-
-        // This transform is needed to make ttf's coordinate system agree with tiny-skia's
-        let bounds = path.bounds();
-        let transform = Transform::from_scale(1.0, -1.0)
-            .post_translate(-bounds.x(), bounds.y() + bounds.height());
-        path = path.transform(transform)?;
-
-        Some(path)
-    }
-}
-
-impl Default for SkiaBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl OutlineBuilder for SkiaBuilder {
-    fn move_to(&mut self, x: f32, y: f32) {
-        self.0.move_to(x, y);
-    }
-
-    fn line_to(&mut self, x: f32, y: f32) {
-        self.0.line_to(x, y);
-    }
-
-    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
-        self.0.quad_to(x1, y1, x, y);
-    }
-
-    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
-        // TODO: This is not used, is it implemented correctly?
-        self.0.cubic_to(x1, y1, x2, y2, x, y);
-    }
-
-    fn close(&mut self) {
-        self.0.close();
-    }
 }
 
 #[cfg(test)]

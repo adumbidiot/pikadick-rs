@@ -60,7 +60,6 @@ tracing = "0.1.44"
 tracing-appender = "0.2.5"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.23", features = [ "env-filter", "fmt" ] }
-ttf-parser = "0.25.1"
 uom = "=0.31.1"
 urban-dictionary = { path = "./lib/urban-dictionary-rs", default-features = false, features = [ "rustls" ] }
 url = "2.5.8"
@@ -71,6 +70,7 @@ zalgo = { git = "https://github.com/nathaniel-daniel/zalgo-rs", default-features
 # Optional
 openssl = { version = "0.10.81", optional = true, features = [ "vendored" ] }
 serde_json = "1.0.150"
+skrifa = "0.44.0"
 
 [features]
 # Note: This is needed for cross comp

@@ -27,9 +27,6 @@ ignore = [
     
     # Blocked on songbird
     "RUSTSEC-2024-0384",
-    
-    # Blocked on removing ttf-parser
-    "RUSTSEC-2026-0192",
 ]
 
 [licenses]
