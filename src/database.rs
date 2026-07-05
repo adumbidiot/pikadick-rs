@@ -21,6 +21,7 @@ pub use self::{
 use anyhow::Context;
 use camino::Utf8PathBuf;
 use nd_async_rusqlite::WalPool;
+use std::num::NonZero;
 use tracing::{
     debug,
     error,
@@ -43,21 +44,23 @@ impl Database {
         P: Into<Utf8PathBuf>,
     {
         let path = path.into();
+
+        let num_cores = std::thread::available_parallelism().unwrap_or(NonZero::new(4).unwrap());
         let database = WalPool::builder()
-            .readers(4)
+            .readers(num_cores.into())
             .writer_setup(|database| {
-                debug!("setting up writer");
+                debug!("Setting up writer");
 
                 database.execute_batch(SETUP_TABLES_SQL)?;
                 Ok(())
             })
             .reader_setup(|_database| {
-                debug!("setting up reader");
+                debug!("Setting up reader");
                 Ok(())
             })
             .open(path)
             .await
-            .context("failed to open database")?;
+            .context("Failed to open database")?;
 
         Ok(Self { database })
     }
@@ -99,15 +102,15 @@ impl Database {
                 database.execute("VACUUM;", [])
             })
             .await
-            .context("failed to access database")
-            .and_then(|v| v.context("failed to execute shutdown commands"))
+            .context("Failed to access database")
+            .and_then(|v| v.context("Failed to execute shutdown commands"))
         {
             error!("{error:?}");
         }
         self.database
             .close()
             .await
-            .context("failed to close database")?;
+            .context("Failed to close database")?;
 
         Ok(())
     }
