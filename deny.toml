@@ -16,9 +16,6 @@ ignore = [
     # Blocked on songbird removing derivative
     "RUSTSEC-2024-0388",
     
-    # Remove when we remove bincode.
-    "RUSTSEC-2025-0141",
-    
     # Blocked on serenity moving to reqwests 0.13
     "RUSTSEC-2025-0134",
     
@@ -30,6 +27,9 @@ ignore = [
     
     # Blocked on songbird
     "RUSTSEC-2024-0384",
+    
+    # Blocked on removing ttf-parser
+    "RUSTSEC-2026-0192",
 ]
 
 [licenses]

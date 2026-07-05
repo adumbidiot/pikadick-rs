@@ -49,7 +49,7 @@ impl DeviantartClient {
         let cookie_data: Option<Vec<u8>> = db
             .store_get(DATA_STORE_NAME, COOKIE_KEY)
             .await
-            .context("failed to get cookie data")?;
+            .context("Failed to get cookie data")?;
 
         match cookie_data {
             Some(cookie_data) => {
@@ -58,7 +58,7 @@ impl DeviantartClient {
                     .await?;
             }
             None => {
-                info!("could not load cookie data");
+                info!("Could not load cookie data");
             }
         }
 
@@ -76,7 +76,7 @@ impl DeviantartClient {
         password: &str,
     ) -> anyhow::Result<()> {
         if !self.client.is_logged_in_online().await? {
-            info!("re-signing in");
+            info!("Re-signing in");
             self.client.login(username, password).await?;
 
             // Store the new cookies
@@ -85,13 +85,13 @@ impl DeviantartClient {
                 let mut cookie_data = Vec::with_capacity(1_000_000); // 1 MB
                 cookie_store
                     .lock()
-                    .expect("cookie store is poisoned")
+                    .expect("Cookie store is poisoned")
                     .save_json(&mut cookie_data)
                     .map_err(deviantart::WrapBoxError)?;
                 anyhow::Result::<_>::Ok(cookie_data)
             })
             .await??;
-            db.store_put(DATA_STORE_NAME, COOKIE_KEY, cookie_data)
+            db.store_put(DATA_STORE_NAME, COOKIE_KEY, &cookie_data)
                 .await?;
         }
 
