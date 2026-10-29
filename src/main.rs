@@ -51,7 +51,6 @@ use crate::{
         Database,
         model::TikTokEmbedFlags,
     },
-    poise_data::PoiseData as PoiseDataInner,
     util::LoadingReaction,
 };
 use anyhow::{
@@ -121,11 +120,11 @@ fn rusqlite_log_handler(error_code: i32, message: &str) {
     }
 }
 
-struct Handler;
-
-type PoiseData = Arc<crate::poise_data::PoiseData>;
-type PoiseError = Box<dyn std::error::Error + Send + Sync>;
+type PoiseData = crate::poise_data::PoiseData;
+type PoiseError = anyhow::Error;
 type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
+
+struct Handler;
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
@@ -292,7 +291,7 @@ async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
 
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result<Client> {
-    let poise_data = Arc::new(PoiseDataInner::new(config.clone(), database).await?);
+    let poise_data = PoiseData::new(config.clone(), database).await?;
 
     let framework_options = poise::FrameworkOptions {
         commands: vec![
@@ -371,6 +370,7 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
             })
             .boxed()
         },
+        event_handler: |_context, _event| async move { anyhow::Ok(()) }.boxed(),
         ..Default::default()
     };
 
