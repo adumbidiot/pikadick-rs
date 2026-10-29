@@ -81,15 +81,6 @@ impl Database {
         Ok(self.database.write(move |database| func(database)).await?)
     }
 
-    // Compat
-    async fn access_db<F, R>(&self, func: F) -> anyhow::Result<R>
-    where
-        F: FnOnce(&mut rusqlite::Connection) -> R + Send + 'static,
-        R: Send + 'static,
-    {
-        self.write(func).await
-    }
-
     /// Close the database
     pub async fn close(&self) -> anyhow::Result<()> {
         // Failing to run shutdown commands is not critical and should not prevent shutdown.

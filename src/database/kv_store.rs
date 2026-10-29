@@ -92,7 +92,7 @@ impl Database {
         let prefix = prefix.as_ref().to_vec();
         let key = key.as_ref().to_vec();
 
-        self.access_db(move |database| {
+        self.write(move |database| {
             let txn = database.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
             let maybe_value = txn

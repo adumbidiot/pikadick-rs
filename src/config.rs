@@ -88,11 +88,7 @@ impl LogConfig {
     /// If logging directives not given, choose some defaults.
     fn default_directives() -> Vec<String> {
         // Only enable pikadick since serenity likes puking in the logs during connection failures
-        // serenity's framework section seems ok as well
-        vec![
-            "pikadick=info".to_string(),
-            "serenity::framework::standard=info".to_string(),
-        ]
+        vec!["pikadick=info".to_string()]
     }
 }
 
@@ -137,16 +133,16 @@ impl Config {
     {
         let path = path.as_ref();
         std::fs::read_to_string(path)
-            .with_context(|| format!("failed to read config from '{}'", path))
+            .with_context(|| format!("Failed to read config from \"{path}\""))
             .and_then(|b| Self::load_from_str(&b))
     }
 
-    /// Load a config from a str
+    /// Load a config from a str.
     pub fn load_from_str(s: &str) -> anyhow::Result<Self> {
-        toml::from_str(s).context("failed to parse config")
+        toml::from_str(s).context("Failed to parse config")
     }
 
-    /// Validate a config
+    /// Validate a config.
     pub fn validate(&mut self) -> Vec<ValidationMessage> {
         let mut errors = Vec::with_capacity(3);
 
@@ -219,8 +215,6 @@ pub enum ValidationError {
     MissingStatusType,
     #[error("Missing stream url type")]
     MissingStreamUrl,
-    // #[error("{0}")]
-    // Generic(Cow<'static, str>),
 }
 
 #[derive(Copy, Clone, Debug)]
