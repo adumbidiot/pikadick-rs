@@ -31,7 +31,6 @@
 //! # Pikadick
 
 mod cli_options;
-mod client_data;
 mod commands;
 mod config;
 mod database;
@@ -42,7 +41,6 @@ mod util;
 
 use crate::{
     cli_options::CliOptions,
-    client_data::ClientData,
     config::{
         ActivityKind,
         Config,
@@ -51,6 +49,7 @@ use crate::{
         Database,
         model::TikTokEmbedFlags,
     },
+    poise_data::PoiseData as PoiseDataInner,
     util::LoadingReaction,
 };
 use anyhow::{
@@ -91,6 +90,10 @@ use tracing::{
 use tracing_appender::non_blocking::WorkerGuard;
 use url::Url;
 
+type PoiseData = Arc<crate::poise_data::PoiseData>;
+type PoiseError = anyhow::Error;
+type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
+
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
@@ -125,17 +128,6 @@ fn rusqlite_log_handler(error_code: i32, message: &str) {
     }
 }
 
-type PoiseData = crate::poise_data::PoiseData;
-type PoiseError = anyhow::Error;
-type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
-
-#[derive(Debug, Clone, Copy)]
-pub struct ClientDataKey;
-
-impl TypeMapKey for ClientDataKey {
-    type Value = ClientData;
-}
-
 async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
     match tokio::signal::ctrl_c()
         .await
@@ -162,15 +154,7 @@ async fn process_urls_in_message(
         TikTok,
     }
 
-    let tiktok_data = ctx
-        .serenity_context
-        .data
-        .read()
-        .await
-        .get::<ClientDataKey>()
-        .unwrap()
-        .tiktok_data
-        .clone();
+    let tiktok_data = &ctx.user_data.tiktok_data;
 
     // Only embed guild links
     let guild_id = match msg.guild_id {
@@ -293,8 +277,8 @@ async fn set_status(ctx: &FrameworkContext<'_, PoiseData, PoiseError>) -> anyhow
 }
 
 /// Set up a serenity client
-async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result<Client> {
-    let poise_data = PoiseData::new(config.clone(), database).await?;
+async fn setup_client(poise_data: PoiseData) -> anyhow::Result<Client> {
+    let config = poise_data.config.clone();
 
     let framework_options = poise::FrameworkOptions {
         commands: vec![
@@ -330,7 +314,7 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
                     }
                     FrameworkError::NsfwOnly { ctx, .. } => {
                         let result = ctx
-                            .reply("This command can only be used in nsfw channels")
+                            .reply("This command can only be used in nsfw channels.")
                             .await;
                         if let Err(error) = result {
                             error!("{error}");
@@ -352,7 +336,7 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
                         let seconds = remaining_cooldown.as_secs_f64();
                         let result = ctx
                             .reply(format!(
-                                "Wait {seconds:2} seconds to use that command again"
+                                "Wait {seconds:2} seconds to use that command again."
                             ))
                             .await;
                         if let Err(error) = result {
@@ -396,11 +380,11 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
     };
 
     let framework = {
-        let config = config.clone();
+        let config = poise_data.config.clone();
         poise::Framework::builder()
             .options(framework_options)
             .setup(move |ctx, _ready, framework| {
-                Box::pin(async move {
+                async move {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                     if let Some(test_guild_id) = config.test_guild {
                         poise::builtins::register_in_guild(
@@ -412,8 +396,9 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
                     }
                     info!("Registered commands");
 
-                    Ok::<PoiseData, PoiseError>(poise_data)
-                })
+                    anyhow::Ok(poise_data)
+                }
+                .boxed()
             })
             .build()
     };
@@ -516,30 +501,18 @@ async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
 
     // TODO: See if it is possible to start serenity without a network
     info!("Setting up client...");
-    let mut client = setup_client(config.clone(), database.clone())
+    let poise_data = Arc::new(PoiseDataInner::new(config.clone(), database.clone()).await?);
+    let mut client = setup_client(poise_data.clone())
         .await
         .context("Failed to set up client")?;
 
-    let client_data = ClientData::init(config, database.clone())
-        .await
-        .context("Client data initialization failed")?;
-
-    {
-        let mut data = client.data.write().await;
-        data.insert::<ClientDataKey>(client_data);
-    }
-
     info!("Logging in...");
     client.start().await.context("Failed to run client")?;
-    let client_data = {
-        let mut data = client.data.write().await;
-        data.remove::<ClientDataKey>().expect("Missing client data")
-    };
     drop(client);
 
     info!("Running shutdown routine for client data...");
-    client_data.shutdown().await;
-    drop(client_data);
+    poise_data.shutdown().await;
+    drop(poise_data);
 
     info!("Closing database...");
     database.close().await.context("Failed to close database")?;

@@ -11,14 +11,6 @@ use serenity::{
     model::prelude::GuildId,
     utils::validate_token,
 };
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-};
-
-fn default_prefix() -> String {
-    "p!".to_string()
-}
 
 /// The bot config
 #[derive(Deserialize, Debug)]
@@ -29,10 +21,6 @@ pub struct Config {
     /// The application id
     #[serde(rename = "application-id")]
     pub application_id: u64,
-
-    /// Prefix for the bot
-    #[serde(default = "default_prefix")]
-    pub prefix: String,
 
     /// Status config
     pub status: Option<StatusConfig>,
@@ -58,10 +46,6 @@ pub struct Config {
     /// The log config
     #[serde(default)]
     pub log: LogConfig,
-
-    /// Unknown extra data
-    #[serde(flatten)]
-    pub extra: HashMap<String, toml::Value>,
 }
 
 /// Deviant Config
@@ -80,10 +64,6 @@ pub struct SauceNaoConfig {
     /// The api key
     #[serde(rename = "api-key")]
     pub api_key: String,
-
-    /// Unknown extra data
-    #[serde(flatten)]
-    pub extra: HashMap<String, toml::Value>,
 }
 
 /// Rule34 Config
@@ -170,7 +150,7 @@ impl Config {
     pub fn validate(&mut self) -> Vec<ValidationMessage> {
         let mut errors = Vec::with_capacity(3);
 
-        if let Err(_e) = validate_token(&self.token) {
+        if let Err(_error) = validate_token(&self.token) {
             errors.push(ValidationMessage {
                 severity: Severity::Error,
                 error: ValidationError::InvalidToken,
@@ -204,9 +184,6 @@ pub struct StatusConfig {
     kind: Option<ActivityKind>,
     name: String,
     url: Option<String>,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, toml::Value>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize, Default)]
@@ -236,15 +213,14 @@ impl ValidationMessage {
 /// Validation Errors
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
-    #[error("invalid token")]
+    #[error("Invalid token")]
     InvalidToken,
-    #[error("missing status type")]
+    #[error("Missing status type")]
     MissingStatusType,
-    #[error("missing stream url type")]
+    #[error("Missing stream url type")]
     MissingStreamUrl,
-
-    #[error("{0}")]
-    Generic(Cow<'static, str>),
+    // #[error("{0}")]
+    // Generic(Cow<'static, str>),
 }
 
 #[derive(Copy, Clone, Debug)]

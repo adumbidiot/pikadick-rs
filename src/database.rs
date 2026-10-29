@@ -1,6 +1,5 @@
 mod kv_store;
 pub mod model;
-mod reddit_embed;
 mod rule34;
 mod tic_tac_toe;
 mod tiktok_embed;

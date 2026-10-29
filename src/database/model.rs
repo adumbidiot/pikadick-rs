@@ -112,6 +112,7 @@ impl TicTacToeGame {
     /// Order is X player, O player.
     /// This will include computer players.
     /// Convert players into [`UserId`]s and filter if you want human players.
+    #[expect(dead_code)]
     pub fn iter_players(&self) -> impl Iterator<Item = TicTacToePlayer> + '_ {
         let mut count = 0;
         std::iter::from_fn(move || {
