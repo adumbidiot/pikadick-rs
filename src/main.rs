@@ -30,15 +30,15 @@
 
 //! # Pikadick
 
-pub mod cli_options;
-pub mod client_data;
-pub mod commands;
-pub mod config;
-pub mod database;
-pub mod logger;
+mod cli_options;
+mod client_data;
+mod commands;
+mod config;
+mod database;
+mod logger;
 mod poise_data;
-pub mod setup;
-pub mod util;
+mod setup;
+mod util;
 
 use crate::{
     cli_options::CliOptions,
