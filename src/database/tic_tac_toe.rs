@@ -19,24 +19,54 @@ use serenity::model::prelude::*;
 use tic_tac_toe::Board;
 
 // Tic-Tac-Toe SQL
-const DELETE_TIC_TAC_TOE_GAME_SQL: &str = include_str!("../../sql/delete_tic_tac_toe_game.sql");
-const UPDATE_TIC_TAC_TOE_GAME_SQL: &str = include_str!("../../sql/update_tic_tac_toe_game.sql");
-const CREATE_TIC_TAC_TOE_GAME_SQL: &str = include_str!("../../sql/create_tic_tac_toe_game.sql");
-const GET_TIC_TAC_TOE_GAME_SQL: &str = include_str!("../../sql/get_tic_tac_toe_game.sql");
-const CHECK_IN_TIC_TAC_TOE_GAME_SQL: &str = include_str!("../../sql/check_in_tic_tac_toe_game.sql");
-const CREATE_DEFAULT_SCORE_TIC_TAC_TOE_SQL: &str =
-    include_str!("../../sql/create_default_score_tic_tac_toe.sql");
-const INCREMENT_TIES_SCORE_TIC_TAC_TOE_SQL: &str =
-    include_str!("../../sql/increment_ties_score_tic_tac_toe.sql");
-const INCREMENT_WINS_SCORE_TIC_TAC_TOE_SQL: &str =
-    include_str!("../../sql/increment_wins_score_tic_tac_toe.sql");
-const INCREMENT_LOSSES_SCORE_TIC_TAC_TOE_SQL: &str =
-    include_str!("../../sql/increment_losses_score_tic_tac_toe.sql");
-const INCREMENT_CONCEDES_SCORE_TIC_TAC_TOE_SQL: &str =
-    include_str!("../../sql/increment_concedes_score_tic_tac_toe.sql");
-const GET_TIC_TAC_TOE_SCORE_SQL: &str = include_str!("../../sql/get_tic_tac_toe_score.sql");
-const GET_TOP_TIC_TAC_TOE_SCORES_SQL: &str =
-    include_str!("../../sql/get_top_tic_tac_toe_scores.sql");
+const DELETE_TIC_TAC_TOE_GAME_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/delete_tic_tac_toe_game.sql"
+));
+const UPDATE_TIC_TAC_TOE_GAME_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/update_tic_tac_toe_game.sql"
+));
+const CREATE_TIC_TAC_TOE_GAME_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/create_tic_tac_toe_game.sql"
+));
+const GET_TIC_TAC_TOE_GAME_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/get_tic_tac_toe_game.sql"
+));
+const CHECK_IN_TIC_TAC_TOE_GAME_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/check_in_tic_tac_toe_game.sql"
+));
+const CREATE_DEFAULT_SCORE_TIC_TAC_TOE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/create_default_score_tic_tac_toe.sql"
+));
+const INCREMENT_TIES_SCORE_TIC_TAC_TOE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/increment_ties_score_tic_tac_toe.sql"
+));
+const INCREMENT_WINS_SCORE_TIC_TAC_TOE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/increment_wins_score_tic_tac_toe.sql"
+));
+const INCREMENT_LOSSES_SCORE_TIC_TAC_TOE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/increment_losses_score_tic_tac_toe.sql"
+));
+const INCREMENT_CONCEDES_SCORE_TIC_TAC_TOE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/increment_concedes_score_tic_tac_toe.sql"
+));
+const GET_TIC_TAC_TOE_SCORE_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/get_tic_tac_toe_score.sql"
+));
+const GET_TOP_TIC_TAC_TOE_SCORES_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/sql/get_top_tic_tac_toe_scores.sql"
+));
 
 /// Error that may occur while creating a tic-tac-toe game
 #[derive(Debug, thiserror::Error)]
