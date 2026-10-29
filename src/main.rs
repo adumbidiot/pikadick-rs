@@ -214,14 +214,10 @@ async fn process_urls_in_message(
     }
 
     let mut loading_reaction = Some(LoadingReaction::new(ctx.serenity_context.http.clone(), msg));
-
-    // Embed for each url
-    // NOTE: We short circuit on failure since sending a msg to a channel and failing is most likely a permissions problem,
-    // especially since serenity retries each req once.
     for (url_type, url) in urls.iter() {
         match url_type {
             UrlType::TikTok => {
-                let result = tiktok_data
+                tiktok_data
                     .try_embed_url(
                         ctx.serenity_context,
                         msg,
@@ -230,10 +226,7 @@ async fn process_urls_in_message(
                         tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
                     )
                     .await
-                    .context("Failed to generate tiktok embed");
-                if let Err(error) = result {
-                    error!("{error:?}");
-                }
+                    .context("Failed to generate tiktok embed")?;
             }
         }
     }
@@ -379,29 +372,26 @@ async fn setup_client(poise_data: PoiseData) -> anyhow::Result<Client> {
         ..Default::default()
     };
 
-    let framework = {
-        let config = poise_data.config.clone();
-        poise::Framework::builder()
-            .options(framework_options)
-            .setup(move |ctx, _ready, framework| {
-                async move {
-                    poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                    if let Some(test_guild_id) = config.test_guild {
-                        poise::builtins::register_in_guild(
-                            ctx,
-                            &framework.options().commands,
-                            test_guild_id,
-                        )
-                        .await?;
-                    }
-                    info!("Registered commands");
-
-                    anyhow::Ok(poise_data)
+    let framework = poise::Framework::builder()
+        .options(framework_options)
+        .setup(move |ctx, _ready, framework| {
+            async move {
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                if let Some(test_guild_id) = poise_data.config.test_guild {
+                    poise::builtins::register_in_guild(
+                        ctx,
+                        &framework.options().commands,
+                        test_guild_id,
+                    )
+                    .await?;
                 }
-                .boxed()
-            })
-            .build()
-    };
+                info!("Registered commands");
+
+                anyhow::Ok(poise_data)
+            }
+            .boxed()
+        })
+        .build();
 
     // Build the client
     let client = Client::builder(
@@ -494,7 +484,9 @@ fn setup(cli_options: CliOptions) -> anyhow::Result<SetupData> {
 
 /// The async entry
 async fn async_main(config: Arc<Config>) -> anyhow::Result<()> {
-    let database_path = config.data_dir.join("pikadick.sqlite");
+    const DATABASE_NAME: &str = "pikadick.sqlite";
+
+    let database_path = config.data_dir.join(DATABASE_NAME);
     let database = Database::new(database_path)
         .await
         .context("Failed to open database")?;

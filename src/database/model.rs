@@ -1,12 +1,14 @@
 mod jiff_timestamp_wrapper;
 mod rule34_post;
 mod rule34_query_stat;
+mod serenity_user_id_wrapper;
 mod tiktok_embed_flags;
 
 pub use self::{
     jiff_timestamp_wrapper::JiffTimestampWrapper,
     rule34_post::Rule34Post,
     rule34_query_stat::Rule34QueryStat,
+    serenity_user_id_wrapper::SerenityUserIdWrapper,
     tiktok_embed_flags::TikTokEmbedFlags,
 };
 use nd_async_rusqlite::rusqlite::{
@@ -28,22 +30,6 @@ use std::{
     num::NonZeroU64,
     str::FromStr,
 };
-
-/// A wrapper for a serenity user id
-struct DatabaseUserId(UserId);
-
-impl FromSql for DatabaseUserId {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        let value = value
-            .as_i64()
-            .map(i64::to_ne_bytes)
-            .map(u64::from_ne_bytes)
-            .map(NonZeroU64::new)?
-            .ok_or(FromSqlError::OutOfRange(0))?;
-
-        Ok(Self(UserId::from(value)))
-    }
-}
 
 /// A Tic-Tac-Toe game
 #[derive(Debug, Copy, Clone)]
@@ -312,7 +298,7 @@ impl TicTacToeTopPlayerScore {
     pub(crate) fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         let score = row.get(0)?;
 
-        let player = row.get::<_, DatabaseUserId>(1)?.0;
+        let player = row.get::<_, SerenityUserIdWrapper>(1)?.0;
 
         let wins = row.get(2)?;
 
