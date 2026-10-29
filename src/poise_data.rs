@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct PoiseData {
+    pub config: Arc<Config>,
     pub deviantart_client: DeviantartClient,
     pub iqdb_client: IqdbClient,
     pub nekos_client: NekosClient,
@@ -45,6 +46,7 @@ impl PoiseData {
         let tic_tac_toe_data = TicTacToeData::new(database);
 
         Ok(Self {
+            config,
             deviantart_client,
             iqdb_client: IqdbClient::new(),
             nekos_client: NekosClient::new(),

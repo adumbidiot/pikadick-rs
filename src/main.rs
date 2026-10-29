@@ -60,7 +60,11 @@ use anyhow::{
 };
 use mimalloc::MiMalloc;
 use pikadick_util::AsyncLockFile;
-use poise::structs::FrameworkError;
+use poise::{
+    dispatch::FrameworkContext,
+    serenity_prelude::FullEvent,
+    structs::FrameworkError,
+};
 use serenity::{
     FutureExt,
     gateway::{
@@ -128,45 +132,6 @@ struct Handler;
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        let data_lock = ctx.data.read().await;
-        let client_data = data_lock
-            .get::<ClientDataKey>()
-            .expect("Missing client data");
-        let config = client_data.config.clone();
-        drop(data_lock);
-
-        if let (Some(status), Some(kind)) = (config.status_name(), config.status_type()) {
-            match kind {
-                ActivityKind::Listening => {
-                    ctx.set_activity(Some(ActivityData::listening(status)));
-                }
-                ActivityKind::Streaming => {
-                    let result: Result<_, anyhow::Error> = async {
-                        let activity = ActivityData::streaming(
-                            status,
-                            config.status_url().context("Failed to get status url")?,
-                        )?;
-
-                        ctx.set_activity(Some(activity));
-
-                        Ok(())
-                    }
-                    .await;
-
-                    if let Err(error) = result.context("Failed to set activity") {
-                        error!("{error:?}");
-                    }
-                }
-                ActivityKind::Playing => {
-                    ctx.set_activity(Some(ActivityData::playing(status)));
-                }
-            }
-        }
-
-        info!("Logged in as \"{}\"", ready.user.name);
-    }
-
     async fn resume(&self, _ctx: Context, _resumed: ResumedEvent) {
         warn!("Resumed connection");
     }
@@ -289,6 +254,41 @@ async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
     };
 }
 
+async fn set_status(ctx: &FrameworkContext<'_, PoiseData, PoiseError>) -> anyhow::Result<()> {
+    let config = &ctx.user_data.config;
+    let ctx = ctx.serenity_context;
+
+    if let (Some(status), Some(kind)) = (config.status_name(), config.status_type()) {
+        match kind {
+            ActivityKind::Listening => {
+                ctx.set_activity(Some(ActivityData::listening(status)));
+            }
+            ActivityKind::Streaming => {
+                let result = async {
+                    let activity = ActivityData::streaming(
+                        status,
+                        config.status_url().context("Failed to get status url")?,
+                    )?;
+
+                    ctx.set_activity(Some(activity));
+
+                    anyhow::Ok(())
+                }
+                .await;
+
+                if let Err(error) = result.context("Failed to set activity") {
+                    error!("{error:?}");
+                }
+            }
+            ActivityKind::Playing => {
+                ctx.set_activity(Some(ActivityData::playing(status)));
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Set up a serenity client
 async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result<Client> {
     let poise_data = PoiseData::new(config.clone(), database).await?;
@@ -370,7 +370,20 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
             })
             .boxed()
         },
-        event_handler: |_context, _event| async move { anyhow::Ok(()) }.boxed(),
+        event_handler: |context, event| {
+            async move {
+                #[allow(clippy::single_match)]
+                match event {
+                    FullEvent::Ready { data_about_bot } => {
+                        set_status(&context).await?;
+                        info!("Logged in as \"{}\"", data_about_bot.user.name);
+                    }
+                    _ => {}
+                }
+                anyhow::Ok(())
+            }
+            .boxed()
+        },
         ..Default::default()
     };
 
