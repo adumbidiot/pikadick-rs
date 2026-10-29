@@ -38,13 +38,11 @@ use serenity::{
     },
     prelude::Mentionable,
 };
-use std::sync::Arc;
 
 /// Data pertaining to running tic_tac_toe games
-#[derive(Clone)]
 pub struct TicTacToeData {
     database: Database,
-    renderer: Arc<Renderer>,
+    renderer: Renderer,
 }
 
 impl TicTacToeData {
@@ -52,10 +50,7 @@ impl TicTacToeData {
     pub fn new(database: Database) -> Self {
         let renderer = Renderer::new().expect("Failed to init renderer");
 
-        Self {
-            database,
-            renderer: Arc::new(renderer),
-        }
+        Self { database, renderer }
     }
 
     /// Render a board.
