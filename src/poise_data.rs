@@ -19,6 +19,7 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub struct PoiseData {
     pub config: Arc<Config>,
+    pub database: Database,
     pub deviantart_client: DeviantartClient,
     pub iqdb_client: IqdbClient,
     pub nekos_client: NekosClient,
@@ -27,6 +28,7 @@ pub struct PoiseData {
     pub rule34_client: Rule34Client,
     pub sauce_nao_client: SauceNaoClient,
     pub tic_tac_toe_data: TicTacToeData,
+    // pub tiktok_data: TikTokData,
     pub urban_client: UrbanClient,
     pub xkcd_client: xkcd::Client,
     pub yodaspeak_client: yodaspeak::Client,
@@ -43,10 +45,11 @@ impl PoiseData {
             database.clone(),
         );
         let sauce_nao_client = SauceNaoClient::new(&config.sauce_nao.api_key);
-        let tic_tac_toe_data = TicTacToeData::new(database);
+        let tic_tac_toe_data = TicTacToeData::new(database.clone());
 
         Ok(Self {
             config,
+            database,
             deviantart_client,
             iqdb_client: IqdbClient::new(),
             nekos_client: NekosClient::new(),
@@ -55,6 +58,7 @@ impl PoiseData {
             rule34_client,
             sauce_nao_client,
             tic_tac_toe_data,
+            // tiktok_data,
             urban_client: UrbanClient::new(),
             xkcd_client: xkcd::Client::new(),
             yodaspeak_client: yodaspeak::Client::new(),

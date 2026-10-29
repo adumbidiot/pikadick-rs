@@ -128,104 +128,6 @@ type PoiseData = crate::poise_data::PoiseData;
 type PoiseError = anyhow::Error;
 type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
 
-struct Handler;
-
-#[serenity::async_trait]
-impl EventHandler for Handler {
-    #[tracing::instrument(skip(self, ctx, msg), fields(author = %msg.author.id, guild = ?msg.guild_id, content = %msg.content))]
-    #[expect(clippy::collapsible_match)]
-    async fn message(&self, ctx: Context, msg: Message) {
-        let data_lock = ctx.data.read().await;
-        let client_data = data_lock
-            .get::<ClientDataKey>()
-            .expect("Missing client data");
-        let tiktok_data = client_data.tiktok_data.clone();
-        let db = client_data.db.clone();
-        drop(data_lock);
-
-        // Process URL Embeds
-        {
-            // Only embed guild links
-            let guild_id = match msg.guild_id {
-                Some(id) => id,
-                None => {
-                    return;
-                }
-            };
-
-            // No Bots
-            if msg.author.bot {
-                return;
-            }
-
-            let tiktok_embed_flags = db
-                .get_tiktok_embed_flags(guild_id)
-                .await
-                .with_context(|| format!("Failed to get tiktok-embed server data for {guild_id}"))
-                .unwrap_or_else(|error| {
-                    error!("{error:?}");
-                    TikTokEmbedFlags::empty()
-                });
-
-            // Extract urls.
-            // We collect into a `Vec` as the regex iterator is not Sync and cannot be held across await points.
-            let urls: Vec<Url> = util::extract_urls(&msg.content).collect();
-
-            // Check to see if it we will even try to embed
-            let will_try_embedding = urls.iter().any(|url| {
-                let url_host = match url.host() {
-                    Some(host) => host,
-                    None => return false,
-                };
-
-                let tiktok_url = matches!(
-                    url_host,
-                    url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")
-                );
-
-                tiktok_url && tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED)
-            });
-
-            // Return if we won't try embedding.
-            if !will_try_embedding {
-                return;
-            }
-
-            let mut loading_reaction = Some(LoadingReaction::new(ctx.http.clone(), &msg));
-
-            // Embed for each url
-            // NOTE: We short circuit on failure since sending a msg to a channel and failing is most likely a permissions problem,
-            // especially since serenity retries each req once
-            for url in urls.iter() {
-                #[expect(
-                    clippy::single_match,
-                    reason = "Allow for adding other host processing."
-                )]
-                match url.host() {
-                    Some(url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")) => {
-                        if tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED) {
-                            let result = tiktok_data
-                                .try_embed_url(
-                                    &ctx,
-                                    &msg,
-                                    url,
-                                    &mut loading_reaction,
-                                    tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
-                                )
-                                .await
-                                .context("Failed to generate tiktok embed");
-                            if let Err(error) = result {
-                                error!("{error:?}");
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct ClientDataKey;
 
@@ -248,6 +150,107 @@ async fn handle_ctrl_c(shard_manager: Arc<ShardManager>) {
             shard_manager.shutdown_all().await;
         }
     };
+}
+
+async fn process_urls_in_message(
+    ctx: &FrameworkContext<'_, PoiseData, PoiseError>,
+    msg: &Message,
+) -> anyhow::Result<()> {
+    // Only embed guild links
+    let guild_id = match msg.guild_id {
+        Some(id) => id,
+        None => {
+            return Ok(());
+        }
+    };
+
+    // No Bots
+    if msg.author.bot {
+        return Ok(());
+    }
+
+    let tiktok_embed_flags = ctx
+        .user_data
+        .database
+        .get_tiktok_embed_flags(guild_id)
+        .await
+        .with_context(|| format!("Failed to get tiktok-embed server data for {guild_id}"))
+        .unwrap_or_else(|error| {
+            error!("{error:?}");
+            TikTokEmbedFlags::empty()
+        });
+
+    // Extract urls.
+    // We collect into a `Vec` as the regex iterator is not Sync and cannot be held across await points.
+    let urls: Vec<Url> = util::extract_urls(&msg.content).collect();
+
+    // Check to see if it we will even try to embed
+    let will_try_embedding = urls.iter().any(|url| {
+        let url_host = match url.host() {
+            Some(host) => host,
+            None => return false,
+        };
+
+        let tiktok_url = matches!(
+            url_host,
+            url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")
+        );
+
+        tiktok_url && tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED)
+    });
+
+    // Return if we won't try embedding.
+    if !will_try_embedding {
+        return Ok(());
+    }
+
+    let mut loading_reaction = Some(LoadingReaction::new(
+        ctx.serenity_context.http.clone(),
+        msg,
+    ));
+
+    let tiktok_data = ctx
+        .serenity_context
+        .data
+        .read()
+        .await
+        .get::<ClientDataKey>()
+        .unwrap()
+        .tiktok_data
+        .clone();
+
+    // Embed for each url
+    // NOTE: We short circuit on failure since sending a msg to a channel and failing is most likely a permissions problem,
+    // especially since serenity retries each req once
+    for url in urls.iter() {
+        #[expect(
+            clippy::single_match,
+            reason = "Allow for adding other host processing."
+        )]
+        #[expect(clippy::collapsible_match)]
+        match url.host() {
+            Some(url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")) => {
+                if tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED) {
+                    let result = tiktok_data
+                        .try_embed_url(
+                            ctx.serenity_context,
+                            msg,
+                            url,
+                            &mut loading_reaction,
+                            tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
+                        )
+                        .await
+                        .context("Failed to generate tiktok embed");
+                    if let Err(error) = result {
+                        error!("{error:?}");
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
 }
 
 async fn set_status(ctx: &FrameworkContext<'_, PoiseData, PoiseError>) -> anyhow::Result<()> {
@@ -369,6 +372,9 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
         event_handler: |context, event| {
             async move {
                 match event {
+                    FullEvent::Message { new_message } => {
+                        process_urls_in_message(&context, new_message).await?;
+                    }
                     FullEvent::Ready { data_about_bot } => {
                         set_status(&context).await?;
                         info!("Logged in as \"{}\"", data_about_bot.user.name);
@@ -413,7 +419,6 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
         config.token.clone(),
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
     )
-    .event_handler(Handler)
     .application_id(ApplicationId::new(config.application_id))
     .framework(framework)
     .register_songbird()
