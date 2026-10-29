@@ -526,7 +526,7 @@ fn real_main(setup_data: SetupData) -> anyhow::Result<()> {
         .tokio_rt
         .shutdown_timeout(TOKIO_RT_SHUTDOWN_TIMEOUT);
     let elapsed = shutdown_start.elapsed();
-    info!("Shutdown tokio runtime in {:?}", elapsed);
+    info!("Shutdown tokio runtime in {elapsed:?}");
 
     info!("Unlocking lockfile...");
     setup_data
