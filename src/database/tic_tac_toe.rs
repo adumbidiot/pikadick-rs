@@ -9,8 +9,10 @@ use crate::database::{
     },
 };
 use anyhow::Context;
-use rusqlite::{
+use nd_async_rusqlite::rusqlite::{
     OptionalExtension,
+    Result as RusqliteResult,
+    Transaction,
     TransactionBehavior,
     named_params,
     params,
@@ -120,10 +122,10 @@ pub enum TicTacToeTryMoveResponse {
 }
 
 fn get_tic_tac_toe_game(
-    txn: &rusqlite::Transaction<'_>,
+    txn: &Transaction<'_>,
     guild_id: MaybeGuildString,
     user_id: TicTacToePlayer,
-) -> rusqlite::Result<Option<(i64, TicTacToeGame)>> {
+) -> RusqliteResult<Option<(i64, TicTacToeGame)>> {
     txn.prepare_cached(GET_TIC_TAC_TOE_GAME_SQL)?
         .query_row(
             named_params! {
@@ -144,17 +146,13 @@ fn get_tic_tac_toe_game(
         .optional()
 }
 
-fn update_tic_tac_toe_game(
-    txn: &rusqlite::Transaction<'_>,
-    id: i64,
-    board: Board,
-) -> rusqlite::Result<()> {
+fn update_tic_tac_toe_game(txn: &Transaction<'_>, id: i64, board: Board) -> RusqliteResult<()> {
     txn.prepare_cached(UPDATE_TIC_TAC_TOE_GAME_SQL)?
         .execute(params![board.encode_u16(), id])?;
     Ok(())
 }
 
-fn delete_tic_tac_toe_game(txn: &rusqlite::Transaction<'_>, id: i64) -> rusqlite::Result<()> {
+fn delete_tic_tac_toe_game(txn: &Transaction<'_>, id: i64) -> RusqliteResult<()> {
     txn.prepare_cached(DELETE_TIC_TAC_TOE_GAME_SQL)?
         .execute([id])?;
     Ok(())
@@ -162,10 +160,10 @@ fn delete_tic_tac_toe_game(txn: &rusqlite::Transaction<'_>, id: i64) -> rusqlite
 
 /// Try to make a user's score data
 fn create_user_score_data(
-    txn: &rusqlite::Transaction<'_>,
+    txn: &Transaction<'_>,
     guild_id: MaybeGuildString,
     user_id: UserId,
-) -> rusqlite::Result<()> {
+) -> RusqliteResult<()> {
     txn.prepare_cached(CREATE_DEFAULT_SCORE_TIC_TAC_TOE_SQL)?
         .execute(params![guild_id, i64::from(user_id)])?;
 
@@ -174,7 +172,7 @@ fn create_user_score_data(
 
 /// Set a tic-tac-toe game as a draw as part of a larger transaction, consuming it.
 fn set_draw_tic_tac_toe_game(
-    txn: rusqlite::Transaction<'_>,
+    txn: Transaction<'_>,
     id: i64,
     guild_id: MaybeGuildString,
     game: TicTacToeGame,
@@ -198,7 +196,7 @@ fn set_draw_tic_tac_toe_game(
 
 /// Set a tic-tac-toe game as a win as part of a larger transaction, consuming it.
 fn set_win_tic_tac_toe_game(
-    txn: rusqlite::Transaction<'_>,
+    txn: Transaction<'_>,
     id: i64,
     guild_id: MaybeGuildString,
     winner: TicTacToePlayer,

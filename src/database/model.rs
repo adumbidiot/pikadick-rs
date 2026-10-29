@@ -12,6 +12,8 @@ pub use self::{
     tiktok_embed_flags::TikTokEmbedFlags,
 };
 use nd_async_rusqlite::rusqlite::{
+    Result as RusqliteResult,
+    Row as RusqliteRow,
     ToSql,
     types::{
         FromSql,
@@ -189,7 +191,7 @@ impl From<UserId> for TicTacToePlayer {
 }
 
 impl ToSql for TicTacToePlayer {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+    fn to_sql(&self) -> RusqliteResult<ToSqlOutput<'_>> {
         match self {
             Self::Computer => Ok(ToSqlOutput::Borrowed(ValueRef::Null)),
             Self::User(id) => Ok(ToSqlOutput::Borrowed(ValueRef::Integer(i64::from(*id)))),
@@ -229,7 +231,7 @@ impl From<Option<GuildId>> for MaybeGuildString {
 }
 
 impl ToSql for MaybeGuildString {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+    fn to_sql(&self) -> RusqliteResult<ToSqlOutput<'_>> {
         match self.guild_id {
             Some(guild_id) => Ok(ToSqlOutput::from(guild_id.to_string())),
             None => Ok(ToSqlOutput::Borrowed(ValueRef::Text(b"empty"))),
@@ -295,7 +297,7 @@ impl TicTacToeTopPlayerScore {
     /// 4. losses
     /// 5. ties
     /// 6. concedes
-    pub(crate) fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+    pub(crate) fn from_row(row: &RusqliteRow<'_>) -> RusqliteResult<Self> {
         let score = row.get(0)?;
 
         let player = row.get::<_, SerenityUserIdWrapper>(1)?.0;

@@ -32,7 +32,7 @@ rand = "0.10.3"
 reddit-tube = { path = "./lib/reddit-tube-rs", default-features = false, features = [ "rustls" ] }
 regex = "1.13.1"
 rule34 = { path = "./lib/rule34-rs", default-features = false, features = [ "rustls" ] }
-# This is needed as some database models refer to rusqlite directly, and nd-async-rusqlite lacks a "blob" feature.
+# This is needed as nd-async-rusqlite lacks a "blob" feature.
 rusqlite = { version = "=0.40.2", features = [ "blob" ] }
 sauce-nao = { git = "https://github.com/adumbidiot/sauce-nao-rs", default-features = false, features = [ "rustls" ] }
 serde = { version = "1.0.229", features = [ "derive" ] }
