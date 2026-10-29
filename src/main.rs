@@ -76,6 +76,7 @@ use serenity::{
 };
 use songbird::SerenityInit;
 use std::{
+    collections::HashSet,
     sync::Arc,
     time::{
         Duration,
@@ -156,6 +157,21 @@ async fn process_urls_in_message(
     ctx: &FrameworkContext<'_, PoiseData, PoiseError>,
     msg: &Message,
 ) -> anyhow::Result<()> {
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+    enum UrlType {
+        TikTok,
+    }
+
+    let tiktok_data = ctx
+        .serenity_context
+        .data
+        .read()
+        .await
+        .get::<ClientDataKey>()
+        .unwrap()
+        .tiktok_data
+        .clone();
+
     // Only embed guild links
     let guild_id = match msg.guild_id {
         Some(id) => id,
@@ -169,6 +185,7 @@ async fn process_urls_in_message(
         return Ok(());
     }
 
+    let mut embed_url_types = HashSet::new();
     let tiktok_embed_flags = ctx
         .user_data
         .database
@@ -179,74 +196,61 @@ async fn process_urls_in_message(
             error!("{error:?}");
             TikTokEmbedFlags::empty()
         });
+    if tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED) {
+        embed_url_types.insert(UrlType::TikTok);
+    }
 
-    // Extract urls.
-    // We collect into a `Vec` as the regex iterator is not Sync and cannot be held across await points.
-    let urls: Vec<Url> = util::extract_urls(&msg.content).collect();
-
-    // Check to see if it we will even try to embed
-    let will_try_embedding = urls.iter().any(|url| {
-        let url_host = match url.host() {
-            Some(host) => host,
-            None => return false,
-        };
-
-        let tiktok_url = matches!(
-            url_host,
-            url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")
-        );
-
-        tiktok_url && tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED)
-    });
-
-    // Return if we won't try embedding.
-    if !will_try_embedding {
+    // If there are no url types to embed, exit.
+    if embed_url_types.is_empty() {
         return Ok(());
     }
 
-    let mut loading_reaction = Some(LoadingReaction::new(
-        ctx.serenity_context.http.clone(),
-        msg,
-    ));
+    // Extract urls.
+    let urls: Vec<(UrlType, Url)> = crate::util::extract_urls(&msg.content)
+        .filter_map(|url| {
+            let url_host = match url.host() {
+                Some(host) => host,
+                None => return None,
+            };
 
-    let tiktok_data = ctx
-        .serenity_context
-        .data
-        .read()
-        .await
-        .get::<ClientDataKey>()
-        .unwrap()
-        .tiktok_data
-        .clone();
+            let url_type = match url_host {
+                url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com") => {
+                    UrlType::TikTok
+                }
+                _ => return None,
+            };
+
+            Some((url_type, url))
+        })
+        .filter(|(url_type, _url)| embed_url_types.contains(url_type))
+        .collect();
+
+    if urls.is_empty() {
+        return Ok(());
+    }
+
+    let mut loading_reaction = Some(LoadingReaction::new(ctx.serenity_context.http.clone(), msg));
 
     // Embed for each url
     // NOTE: We short circuit on failure since sending a msg to a channel and failing is most likely a permissions problem,
-    // especially since serenity retries each req once
-    for url in urls.iter() {
-        #[expect(
-            clippy::single_match,
-            reason = "Allow for adding other host processing."
-        )]
-        #[expect(clippy::collapsible_match)]
-        match url.host() {
-            Some(url::Host::Domain("vm.tiktok.com" | "tiktok.com" | "www.tiktok.com")) => {
-                if tiktok_embed_flags.contains(TikTokEmbedFlags::ENABLED) {
-                    let result = tiktok_data
-                        .try_embed_url(
-                            ctx.serenity_context,
-                            msg,
-                            url,
-                            &mut loading_reaction,
-                            tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
-                        )
-                        .await
-                        .context("Failed to generate tiktok embed");
-                    if let Err(error) = result {
-                        error!("{error:?}");
-                    }
+    // especially since serenity retries each req once.
+    for (url_type, url) in urls.iter() {
+        match url_type {
+            UrlType::TikTok => {
+                let result = tiktok_data
+                    .try_embed_url(
+                        ctx.serenity_context,
+                        msg,
+                        url,
+                        &mut loading_reaction,
+                        tiktok_embed_flags.contains(TikTokEmbedFlags::DELETE_LINK),
+                    )
+                    .await
+                    .context("Failed to generate tiktok embed");
+                if let Err(error) = result {
+                    error!("{error:?}");
                 }
             }
-            _ => {}
         }
     }
 
