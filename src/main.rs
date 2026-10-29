@@ -132,10 +132,6 @@ struct Handler;
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
-    async fn resume(&self, _ctx: Context, _resumed: ResumedEvent) {
-        warn!("Resumed connection");
-    }
-
     #[tracing::instrument(skip(self, ctx, msg), fields(author = %msg.author.id, guild = ?msg.guild_id, content = %msg.content))]
     #[expect(clippy::collapsible_match)]
     async fn message(&self, ctx: Context, msg: Message) {
@@ -372,11 +368,13 @@ async fn setup_client(config: Arc<Config>, database: Database) -> anyhow::Result
         },
         event_handler: |context, event| {
             async move {
-                #[allow(clippy::single_match)]
                 match event {
                     FullEvent::Ready { data_about_bot } => {
                         set_status(&context).await?;
                         info!("Logged in as \"{}\"", data_about_bot.user.name);
+                    }
+                    FullEvent::Resume { .. } => {
+                        warn!("Resumed connection");
                     }
                     _ => {}
                 }

@@ -21,9 +21,6 @@ pub struct ClientData {
 
     /// The database
     pub db: Database,
-
-    /// The config
-    pub config: Arc<Config>,
 }
 
 impl ClientData {
@@ -41,8 +38,6 @@ impl ClientData {
             encoder_task,
 
             db,
-
-            config,
         })
     }
 
