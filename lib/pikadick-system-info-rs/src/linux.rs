@@ -79,9 +79,10 @@ fn parse_cpu_info(input: &str) -> Result<Vec<CpuInfo>, Error> {
         }
 
         let (key, value) = line
-            .split_once(" : ")
-            .ok_or(Error::Generic("Line missing \" : \""))?;
+            .split_once(":")
+            .ok_or(Error::Generic("Line missing \":\""))?;
         let key = key.trim();
+        let value = value.trim();
         let current = current.get_or_insert(CpuInfo::new());
 
         read_cpu_info_keys!(key, value, current {
@@ -91,6 +92,11 @@ fn parse_cpu_info(input: &str) -> Result<Vec<CpuInfo>, Error> {
     }
 
     Ok(cpu_infos)
+}
+
+fn get_cpu_info() -> Result<Vec<CpuInfo>, Error> {
+    let file = std::fs::read_to_string("/proc/cpuinfo")?;
+    parse_cpu_info(&file)
 }
 
 /// A cache for system data
@@ -126,10 +132,7 @@ impl CacheContext {
     /// Get cpu info.
     fn get_cpu_info(&self) -> Result<&[CpuInfo], Error> {
         self.cpu_info
-            .get_or_try_init(|| {
-                let file = std::fs::read_to_string("/proc/cpuinfo")?;
-                parse_cpu_info(&file)
-            })
+            .get_or_try_init(get_cpu_info)
             .map(|value| value.as_slice())
     }
 
@@ -272,6 +275,13 @@ mod test {
         let _logical_cpus = sysconf(SysconfVar::_NPROCESSORS_ONLN)
             .expect("Failed to get logical cpus")
             .expect("Missing logical cpus");
+        assert!(start.elapsed() < BLOCKING_DURATION);
+    }
+
+    #[test]
+    fn parse_cpu_info_does_not_block() {
+        let start = Instant::now();
+        let _cpu_info = get_cpu_info().expect("Failed to parse cpu info");
         assert!(start.elapsed() < BLOCKING_DURATION);
     }
 
