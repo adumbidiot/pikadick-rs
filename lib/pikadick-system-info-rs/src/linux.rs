@@ -19,6 +19,7 @@ use nix::{
 use once_cell::sync::OnceCell;
 use platforms::Arch;
 use std::{
+    collections::HashSet,
     os::unix::ffi::OsStringExt,
     time::{
         Duration,
@@ -26,45 +27,123 @@ use std::{
     },
 };
 
+const DUPLICATE_CPU_INFO_KEY_ERROR: &str = "Duplicate key";
+
+#[derive(Debug)]
+struct CpuInfo {
+    processor: Option<u32>,
+    physical_id: Option<u32>,
+}
+
+impl CpuInfo {
+    fn new() -> Self {
+        Self {
+            processor: None,
+            physical_id: None,
+        }
+    }
+}
+
+macro_rules! read_cpu_info_keys {
+    ($key:ident, $value:ident, $cpu_info:ident {
+        $(
+            $key_name:literal => $field:ident : $type_:ty
+        ),* $(,)?
+    }) => {
+        match $key {
+            $(
+                $key_name => {
+                    let parsed: $type_ = $value.parse()?;
+
+                    if $cpu_info.$field.is_some() {
+                        return Err(Error::Generic(DUPLICATE_CPU_INFO_KEY_ERROR));
+                    }
+
+                    $cpu_info.$field = Some(parsed);
+                }
+            )*
+            _ => {}
+        }
+    };
+}
+
+fn parse_cpu_info(input: &str) -> Result<Vec<CpuInfo>, Error> {
+    let mut cpu_infos = Vec::new();
+    let mut current = Some(CpuInfo::new());
+    for line in input.split('\n') {
+        if line.is_empty() {
+            if let Some(info) = current.take() {
+                cpu_infos.push(info);
+            }
+            continue;
+        }
+
+        let (key, value) = line
+            .split_once(" : ")
+            .ok_or(Error::Generic("Line missing \" : \""))?;
+        let key = key.trim();
+        let current = current.get_or_insert(CpuInfo::new());
+
+        read_cpu_info_keys!(key, value, current {
+            "processor" => processor: u32,
+            "physical id" => physical_id: u32,
+        });
+    }
+
+    Ok(cpu_infos)
+}
+
 /// A cache for system data
 #[derive(Debug)]
 pub(crate) struct CacheContext {
     sysinfo: OnceCell<SysInfo>,
     utsname: OnceCell<UtsName>,
+    cpu_info: OnceCell<Vec<CpuInfo>>,
 }
 
 impl CacheContext {
-    /// Make a new cache context
+    /// Make a new cache context.
     pub fn new() -> Self {
         Self {
             sysinfo: OnceCell::new(),
             utsname: OnceCell::new(),
+            cpu_info: OnceCell::new(),
         }
     }
 
-    /// Get the system info
+    /// Get the system info.
     fn get_sysinfo(&self) -> Result<&SysInfo, Error> {
         self.sysinfo
             .get_or_try_init(|| sysinfo().map_err(|error| Error::Io(std::io::Error::from(error))))
     }
 
-    /// Get the utsname
+    /// Get the utsname.
     fn get_utsname(&self) -> Result<&UtsName, Error> {
         self.utsname
             .get_or_try_init(|| uname().map_err(|error| Error::Io(std::io::Error::from(error))))
     }
 
-    /// Get the time the system was booted
+    /// Get cpu info.
+    fn get_cpu_info(&self) -> Result<&[CpuInfo], Error> {
+        self.cpu_info
+            .get_or_try_init(|| {
+                let file = std::fs::read_to_string("/proc/cpuinfo")?;
+                parse_cpu_info(&file)
+            })
+            .map(|value| value.as_slice())
+    }
+
+    /// Get the time the system was booted.
     pub fn get_boot_time(&self) -> Result<SystemTime, Error> {
         Ok(SystemTime::now() - self.get_uptime()?)
     }
 
-    /// Get the uptime
+    /// Get the uptime.
     pub fn get_uptime(&self) -> Result<Duration, Error> {
         Ok(self.get_sysinfo()?.uptime())
     }
 
-    /// Get the hostname
+    /// Get the hostname.
     pub fn get_hostname(&self) -> Result<String, Error> {
         let buffer = gethostname().map_err(std::io::Error::from)?.into_vec();
         String::from_utf8(buffer).map_err(Error::InvalidUtf8String)
@@ -138,12 +217,27 @@ impl CacheContext {
             .try_into()
             .expect("The number of cores cannot fit in a `usize`"))
     }
+
+    /// Get the number of physical cpu cores.
+    pub fn count_physical_cpus(&self) -> Result<usize, Error> {
+        let cpu_info = self.get_cpu_info()?;
+        let physical_ids: HashSet<u32> = cpu_info
+            .iter()
+            .map(|info| {
+                info.physical_id
+                    .ok_or(Error::Generic("Missing physical id"))
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(physical_ids.len())
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use std::time::Instant;
+
+    const BLOCKING_DURATION: Duration = Duration::from_millis(1);
 
     fn assert_impl_send<T>()
     where
@@ -155,30 +249,30 @@ mod test {
     fn sysinfo_does_not_block() {
         let start = Instant::now();
         let _sysinfo = sysinfo();
-        assert!(start.elapsed() < Duration::from_millis(1));
+        assert!(start.elapsed() < BLOCKING_DURATION);
     }
 
     #[test]
     fn gethostname_does_not_block() {
         let start = Instant::now();
-        let _hostname = gethostname().expect("failed to get hostname");
-        assert!(start.elapsed() < Duration::from_millis(1));
+        let _hostname = gethostname().expect("Failed to get hostname");
+        assert!(start.elapsed() < BLOCKING_DURATION);
     }
 
     #[test]
     fn uname_does_not_block() {
         let start = Instant::now();
-        let _utsname = uname().expect("failed to get utsname");
-        assert!(start.elapsed() < Duration::from_millis(1));
+        let _utsname = uname().expect("Failed to get utsname");
+        assert!(start.elapsed() < BLOCKING_DURATION);
     }
 
     #[test]
     fn sysconf_sc_n_processors_onln_does_not_block() {
         let start = Instant::now();
         let _logical_cpus = sysconf(SysconfVar::_NPROCESSORS_ONLN)
-            .expect("failed to get logical cpus")
-            .expect("missing logical cpus");
-        assert!(start.elapsed() < Duration::from_millis(1));
+            .expect("Failed to get logical cpus")
+            .expect("Missing logical cpus");
+        assert!(start.elapsed() < BLOCKING_DURATION);
     }
 
     #[test]

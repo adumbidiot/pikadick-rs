@@ -35,6 +35,10 @@ pub enum Error {
     #[error("Invalid utf8 os str")]
     InvalidUtf8OsStr,
 
+    /// Failed to parse int
+    #[error("Failed to parse int")]
+    ParseInt(#[from] std::num::ParseIntError),
+
     /// The value is missing for some reason
     #[error("Missing value")]
     MissingValue,
