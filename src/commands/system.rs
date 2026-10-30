@@ -264,18 +264,21 @@ pub async fn system(ctx: PoiseContext<'_>) -> Result<(), PoiseError> {
         }
     };
 
-    let cpu_frequency = match heim::cpu::frequency().await {
-        Ok(cpu_frequency) => Some(cpu_frequency),
+    let cpu_physical_count = match cache_context
+        .count_physical_cpus()
+        .context("Failed to count number of physical cpus")
+    {
+        Ok(cpu_physical_count) => Some(cpu_physical_count),
         Err(error) => {
-            warn!("Failed to get cpu frequency: {error}");
+            warn!("Failed to get physical cpu count: {error}");
             None
         }
     };
 
-    let cpu_physical_count = match heim::cpu::physical_count().await {
-        Ok(cpu_physical_count) => cpu_physical_count, // This returns an option, so we return it here to flatten it.
+    let cpu_frequency = match heim::cpu::frequency().await {
+        Ok(cpu_frequency) => Some(cpu_frequency),
         Err(error) => {
-            warn!("Failed to get physical cpu count: {error}");
+            warn!("Failed to get cpu frequency: {error}");
             None
         }
     };

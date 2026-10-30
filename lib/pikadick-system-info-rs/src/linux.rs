@@ -279,7 +279,7 @@ mod test {
     }
 
     #[test]
-    fn parse_cpu_info_does_not_block() {
+    fn get_cpu_info_does_not_block() {
         let start = Instant::now();
         let _cpu_info = get_cpu_info().expect("Failed to parse cpu info");
         assert!(start.elapsed() < BLOCKING_DURATION);
