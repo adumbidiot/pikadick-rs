@@ -224,14 +224,33 @@ impl CacheContext {
     /// Get the number of physical cpu cores.
     pub fn count_physical_cpus(&self) -> Result<usize, Error> {
         let cpu_info = self.get_cpu_info()?;
-        let physical_ids: HashSet<u32> = cpu_info
-            .iter()
-            .map(|info| {
-                info.physical_id
-                    .ok_or(Error::Generic("Missing physical id"))
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(physical_ids.len())
+
+        // Some computers, like the Raspberry Pi 4, will not report the physical_id field.
+        // In these cases, fallback to counting based on the processor field.
+        let has_physical_ids = cpu_info.iter().any(|info| info.physical_id.is_some());
+        if has_physical_ids {
+            let physical_ids: HashSet<u32> = cpu_info
+                .iter()
+                .map(|info| {
+                    info.physical_id
+                        .ok_or(Error::Generic("Missing physical id"))
+                })
+                .collect::<Result<_, _>>()?;
+            Ok(physical_ids.len())
+        } else {
+            let processors: HashSet<u32> = cpu_info
+                .iter()
+                // The Raspberry Pi 4 will report the BCM2835 here,
+                // which does not have a processor field.
+                .filter_map(|info| info.processor)
+                .collect();
+            let count = processors.len();
+            if count == 0 {
+                return Err(Error::Generic("count should be greater than 0"));
+            }
+
+            Ok(count)
+        }
     }
 }
 

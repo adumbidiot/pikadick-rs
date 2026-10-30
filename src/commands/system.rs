@@ -270,7 +270,7 @@ pub async fn system(ctx: PoiseContext<'_>) -> Result<(), PoiseError> {
     {
         Ok(cpu_physical_count) => Some(cpu_physical_count),
         Err(error) => {
-            warn!("Failed to get physical cpu count: {error}");
+            warn!("{error:?}");
             None
         }
     };
