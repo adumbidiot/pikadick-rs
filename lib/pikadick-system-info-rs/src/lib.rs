@@ -152,6 +152,14 @@ impl CacheContext {
     pub fn count_logical_cpus(&self) -> Result<usize, Error> {
         self.inner.count_logical_cpus()
     }
+
+    /// Get the number of physical cpu cores.
+    ///
+    /// # Blocking
+    /// This is NOT blocking.
+    pub fn count_physical_cpus(&self) -> Result<usize, Error> {
+        self.inner.count_physical_cpus()
+    }
 }
 
 impl Default for CacheContext {
@@ -309,5 +317,17 @@ mod tests {
         let elapsed = start.elapsed();
 
         println!("Logical Cpus: {logical_cpus}\nTime: {elapsed:?}");
+    }
+
+    #[test]
+    fn physical_cpus() {
+        let cache_context = CacheContext::new();
+        let start = Instant::now();
+        let physical_cpus = cache_context
+            .count_physical_cpus()
+            .expect("Failed to get count physical cpus");
+        let elapsed = start.elapsed();
+
+        println!("Physical Cpus: {physical_cpus}\nTime: {elapsed:?}");
     }
 }

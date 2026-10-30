@@ -242,12 +242,12 @@ impl Database {
         };
 
         self.write(move |db| {
-            let txn = db
+            let transaction = db
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .context("Failed to create transaction")
                 .map_err(TicTacToeCreateGameError::Database)?;
 
-            let check_in_game_result: Option<(TicTacToePlayer, TicTacToePlayer)> = txn
+            let check_in_game_result: Option<(TicTacToePlayer, TicTacToePlayer)> = transaction
                 .prepare_cached(CHECK_IN_TIC_TAC_TOE_GAME_SQL)
                 .context("Failed to prepare query")
                 .map_err(TicTacToeCreateGameError::Database)?
@@ -260,7 +260,7 @@ impl Database {
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )
                 .optional()
-                .context("failed to query if in game")
+                .context("Failed to query if in game")
                 .map_err(TicTacToeCreateGameError::Database)?;
 
             if let Some((maybe_x_player_in_game, maybe_o_player_in_game)) = check_in_game_result {
@@ -282,8 +282,9 @@ impl Database {
             }
 
             let board = game.board.encode_u16();
-            txn.prepare_cached(CREATE_TIC_TAC_TOE_GAME_SQL)
-                .context("failed to prepare query")
+            transaction
+                .prepare_cached(CREATE_TIC_TAC_TOE_GAME_SQL)
+                .context("Failed to prepare query")
                 .map_err(TicTacToeCreateGameError::Database)?
                 .execute(params![
                     board,
@@ -291,17 +292,18 @@ impl Database {
                     o_player,
                     OptionGuildIdString(guild_id)
                 ])
-                .context("failed to create game in database")
+                .context("Failed to create game in database")
                 .map_err(TicTacToeCreateGameError::Database)?;
 
-            txn.commit()
-                .context("failed to commit")
+            transaction
+                .commit()
+                .context("Failed to commit")
                 .map_err(TicTacToeCreateGameError::Database)?;
 
             Ok(game)
         })
         .await
-        .context("database access failed to join")
+        .context("Database access failed")
         .map_err(TicTacToeCreateGameError::Database)?
     }
 

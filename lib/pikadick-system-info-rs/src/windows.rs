@@ -14,6 +14,7 @@ use windows_sys::{
     Wdk::System::SystemServices::RtlGetVersion,
     Win32::{
         Foundation::{
+            ERROR_INSUFFICIENT_BUFFER,
             FALSE,
             STATUS_SUCCESS,
             TRUE,
@@ -35,10 +36,12 @@ use windows_sys::{
                 ComputerNamePhysicalDnsHostname,
                 ComputerNamePhysicalNetBIOS,
                 GetComputerNameExW,
+                GetLogicalProcessorInformationEx,
                 GetNativeSystemInfo,
                 GetTickCount64,
                 GetVersionExW,
                 GlobalMemoryStatusEx,
+                LOGICAL_PROCESSOR_RELATIONSHIP,
                 MEMORYSTATUSEX,
                 OSVERSIONINFOEXW,
                 PROCESSOR_ARCHITECTURE_AMD64,
@@ -47,7 +50,9 @@ use windows_sys::{
                 PROCESSOR_ARCHITECTURE_IA64,
                 PROCESSOR_ARCHITECTURE_INTEL,
                 PROCESSOR_ARCHITECTURE_UNKNOWN,
+                RelationProcessorCore,
                 SYSTEM_INFO,
+                SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX,
             },
             SystemServices::{
                 VER_NT_DOMAIN_CONTROLLER,
@@ -638,6 +643,166 @@ where
     Ok(context.user_data)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum LogicalProcessorRelationship {
+    ProcessorCore,
+}
+
+impl TryFrom<LOGICAL_PROCESSOR_RELATIONSHIP> for LogicalProcessorRelationship {
+    type Error = LOGICAL_PROCESSOR_RELATIONSHIP;
+
+    fn try_from(value: LOGICAL_PROCESSOR_RELATIONSHIP) -> Result<Self, Self::Error> {
+        #[expect(
+            non_upper_case_globals,
+            reason = "RelationProcessorCore is from windows-sys and we have no control over it."
+        )]
+        match value {
+            RelationProcessorCore => Ok(Self::ProcessorCore),
+            _ => Err(value),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct SystemLogicalProcessorInformationEx<'a>(&'a SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX);
+
+impl SystemLogicalProcessorInformationEx<'_> {
+    fn relationship(&self) -> Option<LogicalProcessorRelationship> {
+        LogicalProcessorRelationship::try_from(self.0.Relationship).ok()
+    }
+
+    fn size(&self) -> u32 {
+        self.0.Size
+    }
+}
+
+impl std::fmt::Debug for SystemLogicalProcessorInformationEx<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("SystemLogicalProcessorInformationEx")
+            .field("relationship", &self.relationship())
+            .field("size", &self.size())
+            .finish()
+    }
+}
+
+struct LogicalProcessorInformationExStore {
+    buffer: Vec<u8>,
+}
+
+impl LogicalProcessorInformationExStore {
+    fn cursor(&self) -> LogicalProcessorInformationExStoreCursor<'_> {
+        LogicalProcessorInformationExStoreCursor::new(self)
+    }
+}
+
+struct LogicalProcessorInformationExStoreCursor<'a> {
+    store: &'a LogicalProcessorInformationExStore,
+    current: Option<SystemLogicalProcessorInformationEx<'a>>,
+    offset: usize,
+}
+
+impl<'a> LogicalProcessorInformationExStoreCursor<'a> {
+    fn new(store: &'a LogicalProcessorInformationExStore) -> Self {
+        let mut cursor = Self {
+            store,
+            current: None,
+            offset: 0,
+        };
+
+        unsafe { cursor.read_current() };
+
+        cursor
+    }
+
+    /// Safety
+    /// `offset` must point at a valid SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX in `buffer`,
+    /// or be at the end.
+    unsafe fn read_current(&mut self) {
+        self.current = if self.offset < self.store.buffer.len() {
+            Some(SystemLogicalProcessorInformationEx(unsafe {
+                self.store
+                    .buffer
+                    .as_ptr()
+                    .add(self.offset)
+                    .cast::<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>()
+                    .as_ref()
+                    .expect("Invalid ptr")
+            }))
+        } else {
+            None
+        };
+    }
+
+    fn get(&self) -> Option<SystemLogicalProcessorInformationEx<'a>> {
+        self.current.clone()
+    }
+
+    fn advance(&mut self) -> bool {
+        let current = match self.current.take() {
+            Some(current) => current,
+            None => return false,
+        };
+        self.offset += usize::try_from(current.size()).expect("Size greater than usize");
+
+        unsafe {
+            self.read_current();
+        }
+        if self.current.is_none() {
+            return false;
+        }
+
+        true
+    }
+}
+
+fn get_logical_processor_information_ex() -> Result<LogicalProcessorInformationExStore, Error> {
+    let mut buffer_len_bytes = 0;
+    let mut buffer: Vec<u8> = Vec::new();
+    let result = unsafe {
+        GetLogicalProcessorInformationEx(
+            RelationProcessorCore,
+            buffer
+                .as_mut_ptr()
+                .cast::<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(),
+            &mut buffer_len_bytes,
+        )
+    };
+    if result == TRUE {
+        return Ok(LogicalProcessorInformationExStore { buffer });
+    }
+    let error = std::io::Error::last_os_error();
+    if error.raw_os_error() != Some(ERROR_INSUFFICIENT_BUFFER as i32) {
+        return Err(Error::Io(error));
+    }
+
+    let buffer_len_usize =
+        usize::try_from(buffer_len_bytes).expect("buffer_len larger than a usize");
+    buffer.reserve(buffer_len_usize);
+    let result = unsafe {
+        GetLogicalProcessorInformationEx(
+            RelationProcessorCore,
+            buffer
+                .as_mut_ptr()
+                .cast::<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(),
+            &mut buffer_len_bytes,
+        )
+    };
+    if result == FALSE {
+        return Err(Error::Io(std::io::Error::last_os_error()));
+    }
+    let buffer_len_usize =
+        usize::try_from(buffer_len_bytes).expect("buffer_len larger than a usize");
+    unsafe { buffer.set_len(buffer_len_usize) };
+
+    Ok(LogicalProcessorInformationExStore { buffer })
+}
+
+/*
+fn call_nt_power_information() -> Result<(), Error>{
+    // CallNtPowerInformation
+}
+*/
+
 #[derive(Debug)]
 struct PageFileStats {
     /// The total size of all page files, in pages.
@@ -822,6 +987,23 @@ impl CacheContext {
         Ok(get_active_processor_count(u16::MAX)?
             .try_into()
             .expect("Windows is 16 bit"))
+    }
+
+    /// Get the number of physical cpus cores.
+    pub fn count_physical_cpus(&self) -> Result<usize, Error> {
+        let store = get_logical_processor_information_ex()?;
+        let mut cursor = store.cursor();
+
+        let mut physical_core_count = 0;
+        while let Some(info) = cursor.get() {
+            if info.relationship() == Some(LogicalProcessorRelationship::ProcessorCore) {
+                physical_core_count += 1;
+            }
+
+            cursor.advance();
+        }
+
+        Ok(physical_core_count)
     }
 }
 

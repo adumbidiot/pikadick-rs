@@ -187,8 +187,6 @@ impl FromSql for TicTacToePlayer {
         match value {
             ValueRef::Integer(int) => {
                 let int_u64 = u64::from_ne_bytes(int.to_ne_bytes());
-                // This is not heavy
-                #[allow(clippy::or_fun_call)]
                 let user_id =
                     UserId::from(NonZeroU64::new(int_u64).ok_or(FromSqlError::OutOfRange(0))?);
                 Ok(Self::User(user_id))
@@ -241,15 +239,10 @@ impl TicTacToeTopPlayerScore {
     /// 6. concedes
     pub(crate) fn from_row(row: &RusqliteRow<'_>) -> RusqliteResult<Self> {
         let score = row.get(0)?;
-
-        let player = row.get::<_, SerenityUserIdWrapper>(1)?.0;
-
+        let SerenityUserIdWrapper(player) = row.get(1)?;
         let wins = row.get(2)?;
-
         let losses = row.get(3)?;
-
         let ties = row.get(4)?;
-
         let concedes = row.get(5)?;
 
         Ok(TicTacToeTopPlayerScore {
